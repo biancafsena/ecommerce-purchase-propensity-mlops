@@ -1,0 +1,112 @@
+[project]
+name = "ecommerce-purchase-propensity-mlops"
+version = "0.1.0"
+description = "End-to-end MLOps pipeline for e-commerce purchase propensity prediction using Scikit-Learn, DVC, MLflow and Docker."
+readme = "README.md"
+authors = [
+    { name = "Bianca Firmino Ferreira de Sena", email = "144576297+biancafsena@users.noreply.github.com" }
+]
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "numpy (>=2.3,<2.5)",
+    "pandas (>=3.0.5,<4.0.0)",
+    "scikit-learn (>=1.9.1,<2.0.0)",
+    "joblib (>=1.6.0,<2.0.0)",
+    "pyyaml (>=6.0.3,<7.0.0)",
+    "pydantic-settings (>=2.15.0,<3.0.0)",
+    "python-dotenv (>=1.2.3,<2.0.0)",
+    "mlflow (>=3.16.0,<4.0.0)",
+    "fastapi (>=0.141.1,<0.142.0)",
+    "uvicorn[standard] (>=0.52.4,<0.53.0)",
+    "pandera[pandas] (>=0.33.1,<0.34.0)",
+    "matplotlib (>=3.11.2,<4.0.0)",
+    "seaborn (>=0.13.2,<0.14.0)",
+]
+
+[dependency-groups]
+dev = [
+    "dvc (>=3.67.1,<4.0.0)",
+    "pytest (>=9.1.1,<10.0.0)",
+    "pytest-cov (>=7.1.0,<8.0.0)",
+    "ruff (>=0.16.7,<0.17.0)",
+    "mypy (>=2.3.1,<3.0.0)",
+    "pre-commit (>=4.6.2,<5.0.0)",
+    "jupyterlab (>=4.6.3,<5.0.0)",
+    "ipykernel (>=7.3.0,<8.0.0)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "types-pyyaml (>=6.0.12.20260906,<7.0.0)",
+]
+
+[tool.poetry]
+packages = [
+    { include = "purchase_propensity", from = "src" }
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "B",
+    "UP",
+    "SIM",
+    "C4",
+    "ARG",
+    "PTH",
+    "RUF",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+addopts = [
+    "-ra",
+    "--strict-config",
+    "--strict-markers",
+    "--cov=purchase_propensity",
+    "--cov-branch",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+branch = true
+source = ["purchase_propensity"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 80
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+strict = true
+warn_unused_configs = true
+show_error_codes = true
+exclude = ["notebooks/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "mlflow.*",
+    "pandas.*",
+    "pandera.*",
+    "seaborn.*",
+    "sklearn.*",
+]
+ignore_missing_imports = true
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

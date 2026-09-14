@@ -1,0 +1,48 @@
+minimum_pre_commit_version: "4.0.0"
+
+default_install_hook_types:
+  - pre-commit
+  - pre-push
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args:
+          - --maxkb=1024
+      - id: check-toml
+      - id: check-yaml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: Ruff lint
+        entry: poetry run ruff check --fix
+        language: system
+        types:
+          - python
+
+      - id: ruff-format
+        name: Ruff format
+        entry: poetry run ruff format --check
+        language: system
+        types:
+          - python
+
+      - id: mypy
+        name: Mypy type check
+        entry: poetry run mypy src
+        language: system
+        pass_filenames: false
+
+      - id: pytest
+        name: Pytest test suite
+        entry: poetry run pytest
+        language: system
+        pass_filenames: false
+        stages:
+          - pre-push
