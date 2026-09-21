@@ -1,0 +1,10 @@
+{
+  "column_count": 18,
+  "dataset_sha256": "b3055ee355f59134d851d32641183cb4a8b45def7124d2f50442a042f358e0d9",
+  "missing_value_count": 0,
+  "negative_class_count": 10422,
+  "positive_class_count": 1908,
+  "positive_class_rate": 0.154745,
+  "row_count": 12330,
+  "status": "passed"
+}

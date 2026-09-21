@@ -1,0 +1,26 @@
+schema: '2.0'
+stages:
+  validate_data:
+    cmd: poetry run python -m purchase_propensity.data.validate
+    deps:
+    - path: data/raw/online_shoppers_intention.csv
+      hash: md5
+      md5: cc6ec1db03b4f10f8de52c56ff48b085
+      size: 1072063
+    - path: src/purchase_propensity/data/download.py
+      hash: md5
+      md5: 085c00e551a50b2bef17ccb9d1190b9d
+      size: 3451
+    - path: src/purchase_propensity/data/schema.py
+      hash: md5
+      md5: 44c1553e72a07f27726c56ce8051b81a
+      size: 3746
+    - path: src/purchase_propensity/data/validate.py
+      hash: md5
+      md5: e6965757064e3a357856c707bd499291
+      size: 2829
+    outs:
+    - path: reports/metrics/raw_data_validation.json
+      hash: md5
+      md5: 9724001240ec155da48c58e2fb282999
+      size: 285

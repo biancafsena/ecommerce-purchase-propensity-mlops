@@ -1,0 +1,11 @@
+stages:
+  validate_data:
+    cmd: poetry run python -m purchase_propensity.data.validate
+    deps:
+    - data/raw/online_shoppers_intention.csv
+    - src/purchase_propensity/data/download.py
+    - src/purchase_propensity/data/schema.py
+    - src/purchase_propensity/data/validate.py
+    metrics:
+    - reports/metrics/raw_data_validation.json:
+        cache: false
