@@ -9,3 +9,18 @@ stages:
     metrics:
     - reports/metrics/raw_data_validation.json:
         cache: false
+  preprocess:
+    cmd: poetry run python -m purchase_propensity.data.preprocess
+    deps:
+    - data/raw/online_shoppers_intention.csv
+    - reports/metrics/raw_data_validation.json
+    - src/purchase_propensity/data/preprocess.py
+    - src/purchase_propensity/data/schema.py
+    params:
+    - data.random_seed
+    - data.target_column
+    - data.test_size
+    - data.train_size
+    - data.validation_size
+    outs:
+    - data/processed

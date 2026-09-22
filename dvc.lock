@@ -24,3 +24,35 @@ stages:
       hash: md5
       md5: 9724001240ec155da48c58e2fb282999
       size: 285
+  preprocess:
+    cmd: poetry run python -m purchase_propensity.data.preprocess
+    deps:
+    - path: data/raw/online_shoppers_intention.csv
+      hash: md5
+      md5: cc6ec1db03b4f10f8de52c56ff48b085
+      size: 1072063
+    - path: reports/metrics/raw_data_validation.json
+      hash: md5
+      md5: 9724001240ec155da48c58e2fb282999
+      size: 285
+    - path: src/purchase_propensity/data/preprocess.py
+      hash: md5
+      md5: 38346352f370a5e80ba8b0957cf59fa2
+      size: 5298
+    - path: src/purchase_propensity/data/schema.py
+      hash: md5
+      md5: 44c1553e72a07f27726c56ce8051b81a
+      size: 3746
+    params:
+      params.yaml:
+        data.random_seed: 42
+        data.target_column: Revenue
+        data.test_size: 0.15
+        data.train_size: 0.7
+        data.validation_size: 0.15
+    outs:
+    - path: data/processed
+      hash: md5
+      md5: ed39fe07cf5da9d3f8aed2f1d1b1ede8.dir
+      size: 361085
+      nfiles: 3
