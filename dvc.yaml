@@ -24,3 +24,26 @@ stages:
     - data.validation_size
     outs:
     - data/processed
+  train_baseline:
+    cmd: poetry run python -m purchase_propensity.modeling.train
+    deps:
+    - data/processed/train.parquet
+    - data/processed/validation.parquet
+    - src/purchase_propensity/features/build.py
+    - src/purchase_propensity/modeling/build.py
+    - src/purchase_propensity/modeling/metrics.py
+    - src/purchase_propensity/modeling/train.py
+    params:
+    - data.target_column
+    - evaluation.decision_threshold
+    - modeling.baseline.class_weight
+    - modeling.baseline.max_iter
+    - modeling.baseline.model_type
+    - modeling.baseline.solver
+    - modeling.primary_metric
+    - modeling.random_seed
+    outs:
+    - models/baseline_logistic_regression.joblib
+    metrics:
+    - reports/metrics/baseline_validation_metrics.json:
+        cache: false

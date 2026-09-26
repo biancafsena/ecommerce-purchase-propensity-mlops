@@ -1,0 +1,15 @@
+{
+  "average_precision": 0.6438061565942653,
+  "balanced_accuracy": 0.8102951111588348,
+  "brier_score": 0.1220354532667514,
+  "decision_threshold": 0.5,
+  "f1": 0.6090651558073654,
+  "log_loss": 0.4406277138069168,
+  "positive_prediction_rate": 0.22714981070849108,
+  "precision": 0.5119047619047619,
+  "primary_metric_value": 0.6438061565942653,
+  "recall": 0.7517482517482518,
+  "roc_auc": 0.8978363287384401,
+  "train_row_count": 8631.0,
+  "validation_row_count": 1849.0
+}
