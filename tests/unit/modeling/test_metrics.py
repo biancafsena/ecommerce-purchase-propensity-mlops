@@ -5,6 +5,7 @@ import pytest
 
 from purchase_propensity.modeling.metrics import (
     evaluate_binary_classifier,
+    select_f1_threshold,
     validate_evaluation_inputs,
 )
 
@@ -30,6 +31,10 @@ def test_evaluate_binary_classifier_returns_expected_metrics() -> None:
     assert metrics["decision_threshold"] == pytest.approx(0.50)
     assert 0.0 < metrics["log_loss"] < 1.0
     assert 0.0 < metrics["brier_score"] < 1.0
+    assert metrics["true_negative"] == pytest.approx(2.0)
+    assert metrics["false_positive"] == pytest.approx(0.0)
+    assert metrics["false_negative"] == pytest.approx(0.0)
+    assert metrics["true_positive"] == pytest.approx(2.0)
 
 
 def test_evaluate_binary_classifier_applies_custom_threshold() -> None:
@@ -120,4 +125,32 @@ def test_validate_evaluation_inputs_rejects_invalid_values(
             labels,
             probabilities,
             threshold,
+        )
+
+
+def test_select_f1_threshold_returns_best_validation_cutoff() -> None:
+    """Select the threshold that produces the highest F1 score."""
+    labels = [0, 0, 1, 1]
+    probabilities = [0.10, 0.40, 0.45, 0.90]
+
+    threshold = select_f1_threshold(
+        labels,
+        probabilities,
+    )
+
+    assert threshold == pytest.approx(0.45)
+
+
+def test_select_f1_threshold_rejects_missing_candidates() -> None:
+    """Reject probabilities that cannot produce an internal cutoff."""
+    labels = [0, 1]
+    probabilities = [0.0, 1.0]
+
+    with pytest.raises(
+        ValueError,
+        match="No valid threshold candidates",
+    ):
+        select_f1_threshold(
+            labels,
+            probabilities,
         )

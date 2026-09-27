@@ -77,8 +77,8 @@ stages:
       size: 1916
     - path: src/purchase_propensity/modeling/metrics.py
       hash: md5
-      md5: 2bf49d3f9493908fec129b4eb7052499
-      size: 2719
+      md5: 860eaaf98c8ddda9e752e721d060fec4
+      size: 4813
     - path: src/purchase_propensity/modeling/train.py
       hash: md5
       md5: 19c10a704f4e6878dadaec01dbb33880
@@ -100,5 +100,47 @@ stages:
       size: 6954
     - path: reports/metrics/baseline_validation_metrics.json
       hash: md5
-      md5: 8ecf027b32e830a8df39518b9af6962e
-      size: 477
+      md5: 5161668b1fd20e5bb573139633fef2c5
+      size: 583
+  evaluate_baseline:
+    cmd: poetry run python -m purchase_propensity.modeling.evaluate
+    deps:
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: c8560b8d806a4c96c98b7ffb0893b6c2
+      size: 63415
+    - path: data/processed/validation.parquet
+      hash: md5
+      md5: 3ed88c66bb91b0e49dd3deaf018e5d90
+      size: 63726
+    - path: models/baseline_logistic_regression.joblib
+      hash: md5
+      md5: c6714ea64370bafbfef4cb2d9f1681ae
+      size: 6954
+    - path: src/purchase_propensity/features/build.py
+      hash: md5
+      md5: 9c0d3aa2620343f608daa639ccb2cba5
+      size: 2718
+    - path: src/purchase_propensity/modeling/evaluate.py
+      hash: md5
+      md5: 3fa39e4a49013c160f983aa4ce1200bb
+      size: 12273
+    - path: src/purchase_propensity/modeling/metrics.py
+      hash: md5
+      md5: 860eaaf98c8ddda9e752e721d060fec4
+      size: 4813
+    params:
+      params.yaml:
+        data.target_column: Revenue
+        evaluation.decision_threshold: 0.5
+        evaluation.threshold_strategy: maximize_f1
+    outs:
+    - path: reports/figures/baseline
+      hash: md5
+      md5: f9b8d29858a6d5180f86c3eb6edef52e.dir
+      size: 226160
+      nfiles: 4
+    - path: reports/metrics/baseline_test_metrics.json
+      hash: md5
+      md5: 337fe0af731a5de62e3d4b88503e8075
+      size: 1288

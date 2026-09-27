@@ -17,3 +17,4 @@ modeling:
 
 evaluation:
   decision_threshold: 0.50
+  threshold_strategy: maximize_f1
