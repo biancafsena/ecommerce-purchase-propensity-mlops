@@ -1,0 +1,64 @@
+{
+  "models": {
+    "extra_trees": {
+      "average_precision": 0.617390848678543,
+      "balanced_accuracy": 0.7670429378682737,
+      "brier_score": 0.10946977797391728,
+      "decision_threshold": 0.5,
+      "f1": 0.5913621262458472,
+      "false_negative": 108.0,
+      "false_positive": 138.0,
+      "log_loss": 0.35962490218011717,
+      "positive_prediction_rate": 0.17090319091400757,
+      "precision": 0.5632911392405063,
+      "primary_metric_value": 0.617390848678543,
+      "recall": 0.6223776223776224,
+      "roc_auc": 0.8802688034933717,
+      "true_negative": 1425.0,
+      "true_positive": 178.0
+    },
+    "logistic_regression": {
+      "average_precision": 0.6438061565942653,
+      "balanced_accuracy": 0.8102951111588348,
+      "brier_score": 0.1220354532667514,
+      "decision_threshold": 0.5,
+      "f1": 0.6090651558073654,
+      "false_negative": 71.0,
+      "false_positive": 205.0,
+      "log_loss": 0.4406277138069168,
+      "positive_prediction_rate": 0.22714981070849108,
+      "precision": 0.5119047619047619,
+      "primary_metric_value": 0.6438061565942653,
+      "recall": 0.7517482517482518,
+      "roc_auc": 0.8978363287384401,
+      "true_negative": 1358.0,
+      "true_positive": 215.0
+    },
+    "random_forest": {
+      "average_precision": 0.6990992041203005,
+      "balanced_accuracy": 0.8060995306676688,
+      "brier_score": 0.09047726298668655,
+      "decision_threshold": 0.5,
+      "f1": 0.6296296296296297,
+      "false_negative": 82.0,
+      "false_positive": 158.0,
+      "log_loss": 0.3003113689465529,
+      "positive_prediction_rate": 0.19578150351541374,
+      "precision": 0.56353591160221,
+      "primary_metric_value": 0.6990992041203005,
+      "recall": 0.7132867132867133,
+      "roc_auc": 0.9149072296865004,
+      "true_negative": 1405.0,
+      "true_positive": 204.0
+    }
+  },
+  "row_counts": {
+    "train": 8631.0,
+    "validation": 1849.0
+  },
+  "selection": {
+    "primary_metric": "average_precision",
+    "selected_model": "random_forest",
+    "selected_score": 0.6990992041203005
+  }
+}

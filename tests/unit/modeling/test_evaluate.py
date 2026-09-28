@@ -323,6 +323,11 @@ def test_evaluate_baseline_selects_threshold_only_from_validation(
         "selected_threshold": 0.45,
         "validation_f1": 0.80,
     }
+
+    assert report["model"] == {
+        "name": "logistic_regression",
+        "artifact_path": model_path.as_posix(),
+    }
     assert report["validation"] == validation_metrics
     assert report["test"] == test_metrics
     assert report["row_counts"] == {

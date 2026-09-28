@@ -1,9 +1,10 @@
-"""Build baseline purchase propensity classification models."""
+"""Build purchase propensity classification models."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
@@ -41,6 +42,42 @@ class BaselineModelConfig:
             raise ValueError("Maximum iterations must be greater than zero.")
 
 
+@dataclass(frozen=True, slots=True)
+class TreeModelConfig:
+    """Shared configuration for tree ensemble candidates."""
+
+    random_seed: int = 42
+    n_estimators: int = 300
+    max_depth: int | None = None
+    min_samples_leaf: int = 2
+    class_weight: str | None = "balanced"
+    n_jobs: int = -1
+
+    def __post_init__(self) -> None:
+        """Validate tree ensemble parameters."""
+        if self.random_seed < 0:
+            raise ValueError("Random seed must be non-negative.")
+
+        if self.n_estimators <= 0:
+            raise ValueError("Number of estimators must be greater than zero.")
+
+        if self.max_depth is not None and self.max_depth <= 0:
+            raise ValueError("Maximum depth must be greater than zero or None.")
+
+        if self.min_samples_leaf <= 0:
+            raise ValueError("Minimum samples per leaf must be greater than zero.")
+
+        if self.class_weight not in {
+            None,
+            "balanced",
+            "balanced_subsample",
+        }:
+            raise ValueError("Class weight must be 'balanced', 'balanced_subsample' or None.")
+
+        if self.n_jobs == 0:
+            raise ValueError("Number of jobs cannot be zero.")
+
+
 def build_baseline_classifier(
     config: BaselineModelConfig,
 ) -> LogisticRegression:
@@ -53,13 +90,83 @@ def build_baseline_classifier(
     )
 
 
+def build_random_forest_classifier(
+    config: TreeModelConfig,
+) -> RandomForestClassifier:
+    """Build the configured random forest classifier."""
+    return RandomForestClassifier(
+        n_estimators=config.n_estimators,
+        max_depth=config.max_depth,
+        min_samples_leaf=config.min_samples_leaf,
+        class_weight=config.class_weight,
+        random_state=config.random_seed,
+        n_jobs=config.n_jobs,
+    )
+
+
+def build_extra_trees_classifier(
+    config: TreeModelConfig,
+) -> ExtraTreesClassifier:
+    """Build the configured extremely randomized trees classifier."""
+    return ExtraTreesClassifier(
+        n_estimators=config.n_estimators,
+        max_depth=config.max_depth,
+        min_samples_leaf=config.min_samples_leaf,
+        class_weight=config.class_weight,
+        random_state=config.random_seed,
+        n_jobs=config.n_jobs,
+    )
+
+
 def build_baseline_pipeline(
     config: BaselineModelConfig,
 ) -> Pipeline:
     """Combine feature preprocessing and baseline classification."""
     return Pipeline(
         steps=[
-            ("preprocessor", build_feature_preprocessor()),
-            ("classifier", build_baseline_classifier(config)),
+            (
+                "preprocessor",
+                build_feature_preprocessor(),
+            ),
+            (
+                "classifier",
+                build_baseline_classifier(config),
+            ),
+        ]
+    )
+
+
+def build_random_forest_pipeline(
+    config: TreeModelConfig,
+) -> Pipeline:
+    """Combine feature preprocessing and random forest classification."""
+    return Pipeline(
+        steps=[
+            (
+                "preprocessor",
+                build_feature_preprocessor(),
+            ),
+            (
+                "classifier",
+                build_random_forest_classifier(config),
+            ),
+        ]
+    )
+
+
+def build_extra_trees_pipeline(
+    config: TreeModelConfig,
+) -> Pipeline:
+    """Combine feature preprocessing and extra trees classification."""
+    return Pipeline(
+        steps=[
+            (
+                "preprocessor",
+                build_feature_preprocessor(),
+            ),
+            (
+                "classifier",
+                build_extra_trees_classifier(config),
+            ),
         ]
     )

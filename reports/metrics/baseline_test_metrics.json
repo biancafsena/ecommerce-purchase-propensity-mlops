@@ -1,4 +1,8 @@
 {
+  "model": {
+    "artifact_path": "models/baseline_logistic_regression.joblib",
+    "name": "logistic_regression"
+  },
   "row_counts": {
     "test": 1850.0,
     "validation": 1849.0

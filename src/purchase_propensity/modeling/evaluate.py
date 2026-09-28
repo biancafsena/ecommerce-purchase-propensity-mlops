@@ -1,4 +1,4 @@
-"""Evaluate the trained baseline on validation and test datasets."""
+"""Evaluate a trained model on validation and test datasets."""
 
 from __future__ import annotations
 
@@ -261,7 +261,7 @@ def save_calibration_figure(
         marker="o",
         color="#0057B8",
         linewidth=2,
-        label="Baseline model",
+        label="Evaluated model",
     )
     axis.plot(
         [0.0, 1.0],
@@ -363,8 +363,9 @@ def save_evaluation_figures(
     )
 
 
-def evaluate_baseline(
+def evaluate_model(
     *,
+    model_name: str,
     model_path: Path,
     validation_path: Path,
     test_path: Path,
@@ -404,6 +405,10 @@ def evaluate_baseline(
     )
 
     report: dict[str, object] = {
+        "model": {
+            "name": model_name,
+            "artifact_path": model_path.as_posix(),
+        },
         "threshold_selection": {
             "strategy": config.threshold_strategy,
             "selected_threshold": selected_threshold,
@@ -431,10 +436,36 @@ def evaluate_baseline(
     return report
 
 
+def evaluate_baseline(
+    *,
+    model_path: Path,
+    validation_path: Path,
+    test_path: Path,
+    params_path: Path,
+    report_path: Path,
+    figures_directory: Path,
+) -> dict[str, object]:
+    """Evaluate the historical logistic regression baseline."""
+    return evaluate_model(
+        model_name="logistic_regression",
+        model_path=model_path,
+        validation_path=validation_path,
+        test_path=test_path,
+        params_path=params_path,
+        report_path=report_path,
+        figures_directory=figures_directory,
+    )
+
+
 def parse_arguments() -> argparse.Namespace:
-    """Parse command-line arguments for baseline evaluation."""
+    """Parse command-line arguments for model evaluation."""
     parser = argparse.ArgumentParser(
-        description=("Select a validation threshold and evaluate the baseline on test data.")
+        description=("Select a validation threshold and evaluate a trained model on test data.")
+    )
+    parser.add_argument(
+        "--model-name",
+        type=str,
+        default="logistic_regression",
     )
     parser.add_argument(
         "--model",
@@ -474,7 +505,8 @@ def main() -> None:
     """Run threshold selection and final test evaluation."""
     arguments = parse_arguments()
 
-    report = evaluate_baseline(
+    report = evaluate_model(
+        model_name=arguments.model_name,
         model_path=arguments.model,
         validation_path=arguments.validation,
         test_path=arguments.test,
@@ -492,7 +524,8 @@ def main() -> None:
         raise TypeError("Test metrics report must be a mapping.")
 
     print(
-        "Baseline evaluation completed: "
+        "Model evaluation completed: "
+        f"model={arguments.model_name}, "
         f"threshold={threshold_selection['selected_threshold']:.4f}, "
         f"test_average_precision="
         f"{test_metrics['average_precision']:.4f}, "
