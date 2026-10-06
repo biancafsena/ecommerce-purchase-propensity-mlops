@@ -45,6 +45,39 @@ def test_load_metrics_returns_numerical_values(
     }
 
 
+def test_load_metrics_reads_nested_section(
+    tmp_path: Path,
+) -> None:
+    """Load numerical metrics from a nested report section."""
+    metrics_path = tmp_path / "metrics.json"
+    metrics_path.write_text(
+        """
+{
+"model": {
+    "name": "random_forest"
+},
+"test": {
+    "average_precision": 0.71,
+    "f1": 0.66,
+    "decision_threshold": 0.64
+}
+}
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    metrics = track.load_metrics(
+        metrics_path,
+        section="test",
+    )
+
+    assert metrics == {
+        "average_precision": 0.71,
+        "f1": 0.66,
+        "decision_threshold": 0.64,
+    }
+
+
 @pytest.mark.parametrize(
     ("document", "expected_message"),
     [
@@ -79,6 +112,26 @@ def test_load_metrics_rejects_invalid_documents(
         match=expected_message,
     ):
         track.load_metrics(metrics_path)
+
+
+def test_load_metrics_rejects_missing_section(
+    tmp_path: Path,
+) -> None:
+    """Reject a requested metrics section that does not exist."""
+    metrics_path = tmp_path / "metrics.json"
+    metrics_path.write_text(
+        '{"validation": {"f1": 0.60}}',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Metrics section not found: test",
+    ):
+        track.load_metrics(
+            metrics_path,
+            section="test",
+        )
 
 
 def test_load_pipeline_rejects_non_pipeline_artifact(
@@ -135,6 +188,43 @@ def test_build_logged_parameters_normalizes_missing_class_weight(
     parameters = track.build_logged_parameters(config)
 
     assert parameters["class_weight"] == "none"
+
+
+def test_build_model_logged_parameters_uses_classifier_configuration(
+    training_config: TrainingConfig,
+) -> None:
+    """Log actual parameters for a non-baseline classifier."""
+    classifier = Mock()
+    classifier.get_params.return_value = {
+        "n_estimators": 300,
+        "max_depth": None,
+        "class_weight": "balanced",
+        "n_jobs": -1,
+        "unsupported": object(),
+    }
+
+    pipeline = Mock(spec=Pipeline)
+    pipeline.named_steps = {
+        "classifier": classifier,
+    }
+
+    parameters = track.build_model_logged_parameters(
+        training_config,
+        pipeline,
+        "random_forest",
+    )
+
+    assert parameters == {
+        "target_column": "Revenue",
+        "random_seed": 42,
+        "primary_metric": "average_precision",
+        "model_type": "random_forest",
+        "decision_threshold": 0.5,
+        "classifier__class_weight": "balanced",
+        "classifier__max_depth": "none",
+        "classifier__n_estimators": 300,
+        "classifier__n_jobs": -1,
+    }
 
 
 def test_build_input_example_excludes_target_column(
@@ -384,6 +474,7 @@ def test_track_and_register_model_logs_run_and_sets_alias(
         name="test-model",
         tags={
             "model_family": "logistic_regression",
+            "pipeline_stage": "train_baseline",
             "source_run_id": "run-123",
         },
     )

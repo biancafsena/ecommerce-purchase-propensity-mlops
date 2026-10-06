@@ -1,4 +1,4 @@
-"""Track and register the trained baseline model with MLflow."""
+"""Track and register trained classification models with MLflow."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import argparse
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import joblib
 import mlflow
@@ -30,7 +31,12 @@ from purchase_propensity.modeling.train import (
 
 DEFAULT_RUN_NAME = "baseline-logistic-regression"
 DEFAULT_LOGGED_MODEL_NAME = "model"
+DEFAULT_MODEL_FAMILY = "logistic_regression"
+DEFAULT_PIPELINE_STAGE = "train_baseline"
+DEFAULT_TEST_PATH = Path("data/processed/test.parquet")
 INPUT_EXAMPLE_ROW_COUNT = 5
+
+ParameterValue = str | int | float | bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,20 +49,50 @@ class TrackingResult:
     model_alias: str
 
 
-def load_metrics(metrics_path: Path) -> dict[str, float]:
-    """Load and validate numerical metrics from JSON."""
-    raw_metrics: object = json.loads(metrics_path.read_text(encoding="utf-8"))
+def require_metrics_mapping(
+    value: object,
+    section_name: str,
+) -> dict[str, object]:
+    """Require a metrics value to be a JSON object."""
+    if not isinstance(value, dict):
+        raise ValueError(f"Metrics section must be a JSON object: {section_name}")
 
-    if not isinstance(raw_metrics, dict):
+    return {str(key): nested_value for key, nested_value in value.items()}
+
+
+def load_metrics(
+    metrics_path: Path,
+    section: str | None = None,
+) -> dict[str, float]:
+    """Load and validate numerical metrics from JSON."""
+    raw_document: object = json.loads(metrics_path.read_text(encoding="utf-8"))
+
+    if not isinstance(raw_document, dict):
         raise ValueError("Metrics document must be a JSON object.")
+
+    document = require_metrics_mapping(
+        raw_document,
+        "root",
+    )
+
+    if section is None:
+        raw_metrics = document
+    else:
+        if section not in document:
+            raise ValueError(f"Metrics section not found: {section}")
+
+        raw_metrics = require_metrics_mapping(
+            document[section],
+            section,
+        )
 
     metrics: dict[str, float] = {}
 
     for key, value in raw_metrics.items():
-        if not isinstance(key, str):
-            raise ValueError("Metric names must be strings.")
-
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
+        if isinstance(value, bool) or not isinstance(
+            value,
+            (int, float),
+        ):
             raise ValueError(f"Metric '{key}' must be numerical.")
 
         metrics[key] = float(value)
@@ -76,8 +112,8 @@ def load_pipeline(model_path: Path) -> Pipeline:
 
 def build_logged_parameters(
     config: TrainingConfig,
-) -> dict[str, str | int | float]:
-    """Build stable MLflow parameters from the training configuration."""
+) -> dict[str, ParameterValue]:
+    """Build stable MLflow parameters for the baseline."""
     return {
         "target_column": config.target_column,
         "random_seed": config.random_seed,
@@ -88,6 +124,67 @@ def build_logged_parameters(
         "max_iter": config.max_iter,
         "decision_threshold": config.decision_threshold,
     }
+
+
+def normalize_parameter_value(
+    value: object,
+) -> ParameterValue | None:
+    """Normalize one estimator parameter for MLflow logging."""
+    if value is None:
+        return "none"
+
+    if isinstance(
+        value,
+        (str, int, float, bool),
+    ):
+        return value
+
+    return None
+
+
+def build_classifier_parameters(
+    pipeline: Pipeline,
+) -> dict[str, ParameterValue]:
+    """Extract stable primitive parameters from the classifier."""
+    classifier = pipeline.named_steps.get("classifier")
+
+    if classifier is None or not hasattr(
+        classifier,
+        "get_params",
+    ):
+        raise ValueError("Pipeline must contain a configurable classifier step.")
+
+    raw_parameters: dict[str, Any] = classifier.get_params(deep=False)
+    parameters: dict[str, ParameterValue] = {}
+
+    for key, value in sorted(raw_parameters.items()):
+        normalized_value = normalize_parameter_value(value)
+
+        if normalized_value is not None:
+            parameters[f"classifier__{key}"] = normalized_value
+
+    return parameters
+
+
+def build_model_logged_parameters(
+    config: TrainingConfig,
+    pipeline: Pipeline,
+    model_family: str,
+) -> dict[str, ParameterValue]:
+    """Build common and classifier-specific MLflow parameters."""
+    if model_family == DEFAULT_MODEL_FAMILY:
+        return build_logged_parameters(config)
+
+    parameters: dict[str, ParameterValue] = {
+        "target_column": config.target_column,
+        "random_seed": config.random_seed,
+        "primary_metric": config.primary_metric,
+        "model_type": model_family,
+        "decision_threshold": config.decision_threshold,
+    }
+    parameters.update(build_classifier_parameters(pipeline))
+
+    return parameters
 
 
 def build_input_example(
@@ -118,7 +215,7 @@ def log_dataset_lineage(
     context: str,
     target_column: str,
 ) -> None:
-    """Log a versioned dataset input with its role in the workflow."""
+    """Log a versioned dataset input with its workflow role."""
     dataframe = pd.read_parquet(dataset_path)
 
     dataset = from_pandas(
@@ -141,12 +238,26 @@ def track_and_register_model(
     params_path: Path,
     train_path: Path,
     validation_path: Path,
+    test_path: Path | None = None,
     run_name: str,
     settings: Settings,
+    model_family: str = DEFAULT_MODEL_FAMILY,
+    pipeline_stage: str = DEFAULT_PIPELINE_STAGE,
+    metrics_section: str | None = None,
+    comparison_report_path: Path | None = None,
 ) -> TrackingResult:
-    """Log the baseline run and register its model version."""
+    """Log a model run and register a new model version."""
+    if not model_family.strip():
+        raise ValueError("Model family cannot be empty.")
+
+    if not pipeline_stage.strip():
+        raise ValueError("Pipeline stage cannot be empty.")
+
     config = load_training_config(params_path)
-    metrics = load_metrics(metrics_path)
+    metrics = load_metrics(
+        metrics_path,
+        section=metrics_section,
+    )
     pipeline = load_pipeline(model_path)
 
     input_example = build_input_example(
@@ -166,8 +277,8 @@ def track_and_register_model(
     tags = {
         "project": settings.project_name,
         "environment": settings.environment,
-        "pipeline_stage": "train_baseline",
-        "model_family": "logistic_regression",
+        "pipeline_stage": pipeline_stage,
+        "model_family": model_family,
         "dataset_split": "train-validation",
     }
 
@@ -189,7 +300,20 @@ def track_and_register_model(
             target_column=config.target_column,
         )
 
-        mlflow.log_params(build_logged_parameters(config))
+        if test_path is not None:
+            log_dataset_lineage(
+                test_path,
+                name="test-dataset",
+                context="evaluation",
+                target_column=config.target_column,
+            )
+
+        parameters = build_model_logged_parameters(
+            config,
+            pipeline,
+            model_family,
+        )
+        mlflow.log_params(parameters)
         mlflow.log_metrics(metrics)
 
         mlflow.log_artifact(
@@ -200,6 +324,12 @@ def track_and_register_model(
             str(params_path),
             artifact_path="configuration",
         )
+
+        if comparison_report_path is not None:
+            mlflow.log_artifact(
+                str(comparison_report_path),
+                artifact_path="reports",
+            )
 
         model_info = mlflow.sklearn.log_model(
             sk_model=pipeline,
@@ -216,7 +346,8 @@ def track_and_register_model(
         model_uri=model_info.model_uri,
         name=settings.mlflow_registered_model_name,
         tags={
-            "model_family": "logistic_regression",
+            "model_family": model_family,
+            "pipeline_stage": pipeline_stage,
             "source_run_id": run_id,
         },
     )
@@ -243,7 +374,7 @@ def track_and_register_model(
 def parse_arguments() -> argparse.Namespace:
     """Parse command-line arguments for MLflow tracking."""
     parser = argparse.ArgumentParser(
-        description=("Track and register the trained baseline model with MLflow.")
+        description=("Track and register a trained model with MLflow.")
     )
 
     parser.add_argument(
@@ -271,16 +402,39 @@ def parse_arguments() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_VALIDATION_PATH,
     )
+
+    parser.add_argument(
+        "--test",
+        type=Path,
+        default=None,
+    )
     parser.add_argument(
         "--run-name",
         default=DEFAULT_RUN_NAME,
+    )
+    parser.add_argument(
+        "--model-family",
+        default=DEFAULT_MODEL_FAMILY,
+    )
+    parser.add_argument(
+        "--pipeline-stage",
+        default=DEFAULT_PIPELINE_STAGE,
+    )
+    parser.add_argument(
+        "--metrics-section",
+        default=None,
+    )
+    parser.add_argument(
+        "--comparison-report",
+        type=Path,
+        default=None,
     )
 
     return parser.parse_args()
 
 
 def main() -> None:
-    """Track and register the baseline from the command line."""
+    """Track and register a model from the command line."""
     arguments = parse_arguments()
 
     result = track_and_register_model(
@@ -289,8 +443,13 @@ def main() -> None:
         params_path=arguments.params,
         train_path=arguments.train,
         validation_path=arguments.validation,
+        test_path=arguments.test,
         run_name=arguments.run_name,
         settings=get_settings(),
+        model_family=arguments.model_family,
+        pipeline_stage=arguments.pipeline_stage,
+        metrics_section=arguments.metrics_section,
+        comparison_report_path=(arguments.comparison_report),
     )
 
     print(
