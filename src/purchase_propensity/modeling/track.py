@@ -246,7 +246,7 @@ def track_and_register_model(
     metrics_section: str | None = None,
     comparison_report_path: Path | None = None,
 ) -> TrackingResult:
-    """Log a model run and register a new model version."""
+    """Log a model run and register its decision threshold."""
     if not model_family.strip():
         raise ValueError("Model family cannot be empty.")
 
@@ -254,10 +254,23 @@ def track_and_register_model(
         raise ValueError("Pipeline stage cannot be empty.")
 
     config = load_training_config(params_path)
+
     metrics = load_metrics(
         metrics_path,
         section=metrics_section,
     )
+
+    if metrics_section == "test" and "decision_threshold" not in metrics:
+        raise ValueError("Test metrics must include the selected decision threshold.")
+
+    decision_threshold = metrics.get(
+        "decision_threshold",
+        config.decision_threshold,
+    )
+
+    if not 0.0 < decision_threshold < 1.0:
+        raise ValueError("Decision threshold must be between 0 and 1.")
+
     pipeline = load_pipeline(model_path)
 
     input_example = build_input_example(
@@ -266,6 +279,7 @@ def track_and_register_model(
     )
 
     predictions = pipeline.predict(input_example)
+
     signature = infer_signature(
         input_example,
         predictions,
@@ -313,6 +327,9 @@ def track_and_register_model(
             pipeline,
             model_family,
         )
+
+        parameters["decision_threshold"] = decision_threshold
+
         mlflow.log_params(parameters)
         mlflow.log_metrics(metrics)
 
@@ -320,6 +337,7 @@ def track_and_register_model(
             str(metrics_path),
             artifact_path="reports",
         )
+
         mlflow.log_artifact(
             str(params_path),
             artifact_path="configuration",
@@ -349,6 +367,9 @@ def track_and_register_model(
             "model_family": model_family,
             "pipeline_stage": pipeline_stage,
             "source_run_id": run_id,
+            "decision_threshold": repr(decision_threshold),
+            "prediction_rule": "probability >= decision_threshold",
+            "positive_class": "1",
         },
     )
 
@@ -357,6 +378,7 @@ def track_and_register_model(
     client = MlflowClient(
         tracking_uri=settings.mlflow_tracking_uri,
     )
+
     client.set_registered_model_alias(
         name=settings.mlflow_registered_model_name,
         alias=settings.mlflow_model_alias,

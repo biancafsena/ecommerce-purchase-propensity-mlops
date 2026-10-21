@@ -6,10 +6,7 @@ from unittest.mock import Mock
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.ensemble import (
-    ExtraTreesClassifier,
-    RandomForestClassifier,
-)
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
@@ -100,14 +97,6 @@ def comparison_config(
             class_weight="balanced",
             n_jobs=-1,
         ),
-        extra_trees=TreeModelConfig(
-            random_seed=42,
-            n_estimators=250,
-            max_depth=18,
-            min_samples_leaf=3,
-            class_weight="balanced_subsample",
-            n_jobs=2,
-        ),
     )
 
 
@@ -130,14 +119,6 @@ def test_load_comparison_config_returns_expected_values(
         min_samples_leaf=2,
         class_weight="balanced",
         n_jobs=-1,
-    )
-    assert config.extra_trees == TreeModelConfig(
-        random_seed=42,
-        n_estimators=250,
-        max_depth=18,
-        min_samples_leaf=3,
-        class_weight="balanced_subsample",
-        n_jobs=2,
     )
 
 
@@ -201,7 +182,7 @@ def test_require_class_weight_rejects_non_string() -> None:
 def test_build_candidate_pipelines_returns_all_models(
     comparison_config: compare.ComparisonConfig,
 ) -> None:
-    """Build the baseline and both tree candidates."""
+    """Build the logistic regression and random forest candidates."""
     pipelines = compare.build_candidate_pipelines(
         comparison_config,
     )
@@ -209,7 +190,6 @@ def test_build_candidate_pipelines_returns_all_models(
     assert set(pipelines) == {
         "logistic_regression",
         "random_forest",
-        "extra_trees",
     }
 
     assert isinstance(
@@ -223,10 +203,6 @@ def test_build_candidate_pipelines_returns_all_models(
     assert isinstance(
         pipelines["random_forest"].named_steps["classifier"],
         RandomForestClassifier,
-    )
-    assert isinstance(
-        pipelines["extra_trees"].named_steps["classifier"],
-        ExtraTreesClassifier,
     )
 
 
@@ -350,7 +326,6 @@ def test_compare_candidate_models_selects_and_saves_best_model(
 
     logistic_pipeline = Mock(spec=Pipeline)
     random_forest_pipeline = Mock(spec=Pipeline)
-    extra_trees_pipeline = Mock(spec=Pipeline)
 
     logistic_pipeline.predict_proba.return_value = np.array(
         [
@@ -372,21 +347,10 @@ def test_compare_candidate_models_selects_and_saves_best_model(
             [0.05, 0.95],
         ]
     )
-    extra_trees_pipeline.predict_proba.return_value = np.array(
-        [
-            [0.85, 0.15],
-            [0.72, 0.28],
-            [0.38, 0.62],
-            [0.28, 0.72],
-            [0.18, 0.82],
-            [0.08, 0.92],
-        ]
-    )
 
     pipelines = {
         "logistic_regression": logistic_pipeline,
         "random_forest": random_forest_pipeline,
-        "extra_trees": extra_trees_pipeline,
     }
 
     evaluation_mock = Mock(
@@ -444,9 +408,8 @@ def test_compare_candidate_models_selects_and_saves_best_model(
 
     logistic_pipeline.fit.assert_called_once()
     random_forest_pipeline.fit.assert_called_once()
-    extra_trees_pipeline.fit.assert_called_once()
 
-    assert evaluation_mock.call_count == 3
+    assert evaluation_mock.call_count == 2
 
     assert report["selection"] == {
         "primary_metric": "average_precision",

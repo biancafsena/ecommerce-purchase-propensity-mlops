@@ -1,5 +1,6 @@
 """Unit tests for candidate tree ensemble builders."""
 
+import pandas as pd
 import pytest
 from sklearn.ensemble import (
     ExtraTreesClassifier,
@@ -161,4 +162,29 @@ def test_build_extra_trees_pipeline_has_expected_steps() -> None:
     assert isinstance(
         pipeline.named_steps["classifier"],
         ExtraTreesClassifier,
+    )
+
+
+def test_random_forest_preprocessor_preserves_numeric_scale() -> None:
+    """Keep numerical values unchanged when preprocessing complete data."""
+
+    pipeline = build_random_forest_pipeline(TreeModelConfig())
+    preprocessor = pipeline.named_steps["preprocessor"]
+
+    numeric_pipeline = next(
+        transformer for name, transformer, _ in preprocessor.transformers if name == "numeric"
+    )
+
+    sample = pd.DataFrame(
+        {
+            "page_count": [1.0, 10.0, 100.0],
+            "duration": [0.0, 50.0, 500.0],
+        }
+    )
+
+    transformed = numeric_pipeline.fit_transform(sample)
+
+    pd.testing.assert_frame_equal(
+        pd.DataFrame(transformed, columns=sample.columns),
+        sample,
     )

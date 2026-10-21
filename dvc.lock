@@ -69,16 +69,16 @@ stages:
       size: 63726
     - path: src/purchase_propensity/features/build.py
       hash: md5
-      md5: 9c0d3aa2620343f608daa639ccb2cba5
-      size: 2718
+      md5: 01c26a920cf7ac5b12a407647348285f
+      size: 2815
     - path: src/purchase_propensity/modeling/build.py
       hash: md5
-      md5: f35b4e6501284ad1961d1762e55660ac
-      size: 4992
+      md5: 397d79a56b1990b9f9a56f2646a36997
+      size: 5003
     - path: src/purchase_propensity/modeling/metrics.py
       hash: md5
-      md5: 860eaaf98c8ddda9e752e721d060fec4
-      size: 4813
+      md5: 57d318a441b826b6a6f0381d58fc2c2b
+      size: 5029
     - path: src/purchase_propensity/modeling/train.py
       hash: md5
       md5: 19c10a704f4e6878dadaec01dbb33880
@@ -87,8 +87,8 @@ stages:
       params.yaml:
         data.target_column: Revenue
         evaluation.decision_threshold: 0.5
-        modeling.baseline.class_weight: balanced
-        modeling.baseline.max_iter: 1000
+        modeling.baseline.class_weight:
+        modeling.baseline.max_iter: 2000
         modeling.baseline.model_type: logistic_regression
         modeling.baseline.solver: lbfgs
         modeling.primary_metric: average_precision
@@ -96,12 +96,12 @@ stages:
     outs:
     - path: models/baseline_logistic_regression.joblib
       hash: md5
-      md5: c6714ea64370bafbfef4cb2d9f1681ae
-      size: 6954
+      md5: 41050a19597fb8d869e28e28447087e4
+      size: 6858
     - path: reports/metrics/baseline_validation_metrics.json
       hash: md5
-      md5: 5161668b1fd20e5bb573139633fef2c5
-      size: 583
+      md5: 98a2798baa7d311ff171a41fd8c2238b
+      size: 624
   evaluate_baseline:
     cmd: poetry run python -m purchase_propensity.modeling.evaluate
     deps:
@@ -157,20 +157,20 @@ stages:
       size: 63726
     - path: src/purchase_propensity/features/build.py
       hash: md5
-      md5: 9c0d3aa2620343f608daa639ccb2cba5
-      size: 2718
+      md5: 01c26a920cf7ac5b12a407647348285f
+      size: 2815
     - path: src/purchase_propensity/modeling/build.py
       hash: md5
-      md5: f35b4e6501284ad1961d1762e55660ac
-      size: 4992
+      md5: 397d79a56b1990b9f9a56f2646a36997
+      size: 5003
     - path: src/purchase_propensity/modeling/compare.py
       hash: md5
-      md5: aa4249920321458eae5d7024b0876a0e
-      size: 9758
+      md5: 566a5b4d558a78ded2d1ecb9239d0746
+      size: 9376
     - path: src/purchase_propensity/modeling/metrics.py
       hash: md5
-      md5: 860eaaf98c8ddda9e752e721d060fec4
-      size: 4813
+      md5: 57d318a441b826b6a6f0381d58fc2c2b
+      size: 5029
     - path: src/purchase_propensity/modeling/train.py
       hash: md5
       md5: 19c10a704f4e6878dadaec01dbb33880
@@ -179,18 +179,13 @@ stages:
       params.yaml:
         data.target_column: Revenue
         evaluation.decision_threshold: 0.5
-        modeling.baseline.class_weight: balanced
-        modeling.baseline.max_iter: 1000
+        modeling.baseline.class_weight:
+        modeling.baseline.max_iter: 2000
         modeling.baseline.model_type: logistic_regression
         modeling.baseline.solver: lbfgs
-        modeling.candidates.extra_trees.class_weight: balanced
-        modeling.candidates.extra_trees.max_depth:
-        modeling.candidates.extra_trees.min_samples_leaf: 2
-        modeling.candidates.extra_trees.n_estimators: 300
-        modeling.candidates.extra_trees.n_jobs: -1
-        modeling.candidates.random_forest.class_weight: balanced
-        modeling.candidates.random_forest.max_depth:
-        modeling.candidates.random_forest.min_samples_leaf: 2
+        modeling.candidates.random_forest.class_weight:
+        modeling.candidates.random_forest.max_depth: 12
+        modeling.candidates.random_forest.min_samples_leaf: 5
         modeling.candidates.random_forest.n_estimators: 300
         modeling.candidates.random_forest.n_jobs: -1
         modeling.primary_metric: average_precision
@@ -198,15 +193,15 @@ stages:
     outs:
     - path: models/selected_model.joblib
       hash: md5
-      md5: ca4beb8e994a25bad1866cfe3c95d79d
-      size: 33110683
+      md5: 7cf8ecfcda2b6bad2e3766dfa7481777
+      size: 11992075
     - path: reports/metrics/model_comparison.json
       hash: md5
-      md5: e4c5c1996c783d69b529f8a70421bd4d
-      size: 2057
+      md5: 7e7456b29814cd43404b56da296c8ced
+      size: 1523
   evaluate_selected_model:
     cmd: poetry run python -m purchase_propensity.modeling.evaluate --model-name
-      random_forest   --model models/selected_model.joblib --report
+      selected_model --model models/selected_model.joblib --report
       reports/metrics/selected_model_test_metrics.json --figures-directory
       reports/figures/selected_model
     deps:
@@ -220,20 +215,20 @@ stages:
       size: 63726
     - path: models/selected_model.joblib
       hash: md5
-      md5: ca4beb8e994a25bad1866cfe3c95d79d
-      size: 33110683
+      md5: 7cf8ecfcda2b6bad2e3766dfa7481777
+      size: 11992075
     - path: src/purchase_propensity/features/build.py
       hash: md5
-      md5: 9c0d3aa2620343f608daa639ccb2cba5
-      size: 2718
+      md5: 01c26a920cf7ac5b12a407647348285f
+      size: 2815
     - path: src/purchase_propensity/modeling/evaluate.py
       hash: md5
       md5: b051b67cbfec7c898ca71c3b0b2a2d18
       size: 13142
     - path: src/purchase_propensity/modeling/metrics.py
       hash: md5
-      md5: 860eaaf98c8ddda9e752e721d060fec4
-      size: 4813
+      md5: 57d318a441b826b6a6f0381d58fc2c2b
+      size: 5029
     params:
       params.yaml:
         data.target_column: Revenue
@@ -242,10 +237,10 @@ stages:
     outs:
     - path: reports/figures/selected_model
       hash: md5
-      md5: df64349c8353de944e404bffdea0e2c6.dir
-      size: 223257
+      md5: cde5db74b7ab54b909124f129ce311c2.dir
+      size: 221343
       nfiles: 4
     - path: reports/metrics/selected_model_test_metrics.json
       hash: md5
-      md5: 8205e9e6e202a1fd3484886a353d92e6
-      size: 1372
+      md5: c1c5a5d47546b4ea1a2d72a29cb1b8ba
+      size: 1462

@@ -16,9 +16,9 @@ class BaselineModelConfig:
     """Configuration for the logistic regression baseline."""
 
     random_seed: int = 42
-    class_weight: str | None = "balanced"
+    class_weight: str | None = None
     solver: str = "lbfgs"
-    max_iter: int = 1000
+    max_iter: int = 2000
 
     def __post_init__(self) -> None:
         """Validate baseline model parameters."""
@@ -48,9 +48,9 @@ class TreeModelConfig:
 
     random_seed: int = 42
     n_estimators: int = 300
-    max_depth: int | None = None
-    min_samples_leaf: int = 2
-    class_weight: str | None = "balanced"
+    max_depth: int | None = 12
+    min_samples_leaf: int = 5
+    class_weight: str | None = None
     n_jobs: int = -1
 
     def __post_init__(self) -> None:
@@ -139,12 +139,12 @@ def build_baseline_pipeline(
 def build_random_forest_pipeline(
     config: TreeModelConfig,
 ) -> Pipeline:
-    """Combine feature preprocessing and random forest classification."""
+    """Combine unscaled numerical features and random forest classification."""
     return Pipeline(
         steps=[
             (
                 "preprocessor",
-                build_feature_preprocessor(),
+                build_feature_preprocessor(scale_numeric=False),
             ),
             (
                 "classifier",

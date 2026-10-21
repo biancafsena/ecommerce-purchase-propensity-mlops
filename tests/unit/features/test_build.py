@@ -46,9 +46,10 @@ def sample_dataframe() -> pd.DataFrame:
 
 def test_feature_groups_cover_all_predictors_without_overlap() -> None:
     """Keep numerical and categorical feature definitions consistent."""
-    assert len(NUMERIC_FEATURES) == 10
+    assert len(NUMERIC_FEATURES) == 9
     assert len(CATEGORICAL_FEATURES) == 7
-    assert len(FEATURE_COLUMNS) == 17
+    assert len(FEATURE_COLUMNS) == 16
+    assert "PageValues" not in FEATURE_COLUMNS
     assert set(NUMERIC_FEATURES).isdisjoint(CATEGORICAL_FEATURES)
 
 
@@ -60,6 +61,7 @@ def test_split_features_and_target_returns_expected_data(
 
     assert list(features.columns) == list(FEATURE_COLUMNS)
     assert "Revenue" not in features.columns
+    assert "PageValues" not in features.columns
     assert target.tolist() == [0, 0, 1, 1]
     assert str(target.dtype) == "int8"
 
@@ -78,7 +80,7 @@ def test_split_features_and_target_rejects_missing_feature(
     sample_dataframe: pd.DataFrame,
 ) -> None:
     """Reject data without a required predictor."""
-    dataframe = sample_dataframe.drop(columns="PageValues")
+    dataframe = sample_dataframe.drop(columns="ProductRelated")
 
     with pytest.raises(ValueError, match="Required feature columns not found"):
         split_features_and_target(dataframe)

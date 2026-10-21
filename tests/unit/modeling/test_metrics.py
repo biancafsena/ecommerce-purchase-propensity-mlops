@@ -35,6 +35,16 @@ def test_evaluate_binary_classifier_returns_expected_metrics() -> None:
     assert metrics["false_positive"] == pytest.approx(0.0)
     assert metrics["false_negative"] == pytest.approx(0.0)
     assert metrics["true_positive"] == pytest.approx(2.0)
+    assert "accuracy" in metrics
+    assert metrics["accuracy"] == pytest.approx(
+        (metrics["true_negative"] + metrics["true_positive"])
+        / (
+            metrics["true_negative"]
+            + metrics["false_positive"]
+            + metrics["false_negative"]
+            + metrics["true_positive"]
+        )
+    )
 
 
 def test_evaluate_binary_classifier_applies_custom_threshold() -> None:
@@ -85,7 +95,7 @@ def test_evaluate_binary_classifier_applies_custom_threshold() -> None:
             [0, 2],
             [0.20, 0.80],
             0.50,
-            "must contain both binary classes",
+            "must contain only binary values",
         ),
         (
             [0, 1],
@@ -154,3 +164,36 @@ def test_select_f1_threshold_rejects_missing_candidates() -> None:
             labels,
             probabilities,
         )
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        [0.0, 0.5, 1.0],
+        [0.0, 1.5, 1.0],
+        [0.0, float("nan"), 1.0],
+        [0.0, float("inf"), 1.0],
+    ],
+)
+def test_evaluation_rejects_invalid_labels_before_conversion(
+    labels: list[float],
+) -> None:
+    """Reject invalid labels before converting them to integers."""
+    with pytest.raises(ValueError, match="Labels must contain only binary values"):
+        evaluate_binary_classifier(
+            labels,
+            [0.1, 0.5, 0.9],
+        )
+
+
+def test_select_f1_threshold_chooses_highest_threshold_on_tie() -> None:
+    """Choose the highest threshold when maximum F1 scores are equal."""
+    labels = [1, 0, 0, 1]
+    probabilities = [0.1, 0.2, 0.3, 0.4]
+
+    selected_threshold = select_f1_threshold(
+        labels,
+        probabilities,
+    )
+
+    assert selected_threshold == pytest.approx(0.4)

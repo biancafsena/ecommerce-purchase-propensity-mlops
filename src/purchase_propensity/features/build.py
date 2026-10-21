@@ -17,7 +17,6 @@ NUMERIC_FEATURES = (
     "ProductRelated_Duration",
     "BounceRates",
     "ExitRates",
-    "PageValues",
     "SpecialDay",
 )
 
@@ -53,14 +52,16 @@ def split_features_and_target(
     return features, target
 
 
-def build_numeric_pipeline() -> Pipeline:
-    """Build preprocessing steps for numerical features."""
-    return Pipeline(
-        steps=[
-            ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", StandardScaler()),
-        ]
-    )
+def build_numeric_pipeline(*, scale_numeric: bool = True) -> Pipeline:
+    """Build numerical preprocessing with optional scaling."""
+    steps = [
+        ("imputer", SimpleImputer(strategy="median")),
+    ]
+
+    if scale_numeric:
+        steps.append(("scaler", StandardScaler()))
+
+    return Pipeline(steps=steps)
 
 
 def build_categorical_pipeline() -> Pipeline:
@@ -79,13 +80,16 @@ def build_categorical_pipeline() -> Pipeline:
     )
 
 
-def build_feature_preprocessor() -> ColumnTransformer:
-    """Build the complete numerical and categorical feature transformer."""
+def build_feature_preprocessor(
+    *,
+    scale_numeric: bool = True,
+) -> ColumnTransformer:
+    """Build preprocessing with optional numerical scaling."""
     return ColumnTransformer(
         transformers=[
             (
                 "numeric",
-                build_numeric_pipeline(),
+                build_numeric_pipeline(scale_numeric=scale_numeric),
                 list(NUMERIC_FEATURES),
             ),
             (

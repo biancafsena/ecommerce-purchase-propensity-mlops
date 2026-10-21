@@ -47,25 +47,7 @@ stages:
     metrics:
     - reports/metrics/baseline_validation_metrics.json:
         cache: false
-  evaluate_baseline:
-    cmd: poetry run python -m purchase_propensity.modeling.evaluate
-    deps:
-    - data/processed/test.parquet
-    - data/processed/validation.parquet
-    - models/baseline_logistic_regression.joblib
-    - src/purchase_propensity/features/build.py
-    - src/purchase_propensity/modeling/evaluate.py
-    - src/purchase_propensity/modeling/metrics.py
-    params:
-    - data.target_column
-    - evaluation.decision_threshold
-    - evaluation.threshold_strategy
-    metrics:
-    - reports/metrics/baseline_test_metrics.json:
-        cache: false
-    plots:
-    - reports/figures/baseline:
-        cache: false
+
   compare_models:
     cmd: poetry run python -m purchase_propensity.modeling.compare
     deps:
@@ -83,11 +65,6 @@ stages:
     - modeling.baseline.max_iter
     - modeling.baseline.model_type
     - modeling.baseline.solver
-    - modeling.candidates.extra_trees.class_weight
-    - modeling.candidates.extra_trees.max_depth
-    - modeling.candidates.extra_trees.min_samples_leaf
-    - modeling.candidates.extra_trees.n_estimators
-    - modeling.candidates.extra_trees.n_jobs
     - modeling.candidates.random_forest.class_weight
     - modeling.candidates.random_forest.max_depth
     - modeling.candidates.random_forest.min_samples_leaf
@@ -101,24 +78,26 @@ stages:
     - reports/metrics/model_comparison.json:
         cache: false
   evaluate_selected_model:
-    cmd: poetry run python -m purchase_propensity.modeling.evaluate
-      --model-name random_forest   --model models/selected_model.joblib
+    cmd: >-
+      poetry run python -m purchase_propensity.modeling.evaluate
+      --model-name selected_model
+      --model models/selected_model.joblib
       --report reports/metrics/selected_model_test_metrics.json
       --figures-directory reports/figures/selected_model
     deps:
-    - data/processed/test.parquet
-    - data/processed/validation.parquet
-    - models/selected_model.joblib
-    - src/purchase_propensity/features/build.py
-    - src/purchase_propensity/modeling/evaluate.py
-    - src/purchase_propensity/modeling/metrics.py
+      - data/processed/test.parquet
+      - data/processed/validation.parquet
+      - models/selected_model.joblib
+      - src/purchase_propensity/features/build.py
+      - src/purchase_propensity/modeling/evaluate.py
+      - src/purchase_propensity/modeling/metrics.py
     params:
-    - data.target_column
-    - evaluation.decision_threshold
-    - evaluation.threshold_strategy
+      - data.target_column
+      - evaluation.decision_threshold
+      - evaluation.threshold_strategy
     metrics:
-    - reports/metrics/selected_model_test_metrics.json:
-        cache: false
+      - reports/metrics/selected_model_test_metrics.json:
+          cache: false
     plots:
-    - reports/figures/selected_model:
-        cache: false
+      - reports/figures/selected_model:
+          cache: false

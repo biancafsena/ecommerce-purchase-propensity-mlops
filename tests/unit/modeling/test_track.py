@@ -365,7 +365,12 @@ def test_track_and_register_model_logs_run_and_sets_alias(
     monkeypatch.setattr(
         track,
         "load_metrics",
-        Mock(return_value={"average_precision": 0.64}),
+        Mock(
+            return_value={
+                "average_precision": 0.64,
+                "decision_threshold": 0.18,
+            }
+        ),
     )
     monkeypatch.setattr(
         track,
@@ -476,6 +481,9 @@ def test_track_and_register_model_logs_run_and_sets_alias(
             "model_family": "logistic_regression",
             "pipeline_stage": "train_baseline",
             "source_run_id": "run-123",
+            "decision_threshold": "0.18",
+            "prediction_rule": "probability >= decision_threshold",
+            "positive_class": "1",
         },
     )
 
@@ -484,3 +492,7 @@ def test_track_and_register_model_logs_run_and_sets_alias(
         alias="champion",
         version="1",
     )
+
+    logged_parameters = track.mlflow.log_params.call_args.args[0]
+
+    assert logged_parameters["decision_threshold"] == 0.18

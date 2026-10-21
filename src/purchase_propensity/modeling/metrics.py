@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from sklearn.metrics import (
+    accuracy_score,
     average_precision_score,
     balanced_accuracy_score,
     brier_score_loss,
@@ -24,7 +25,7 @@ def validate_evaluation_inputs(
     threshold: float,
 ) -> tuple[NDArray[np.int64], NDArray[np.float64]]:
     """Validate and normalize binary labels and predicted probabilities."""
-    labels = np.asarray(y_true, dtype=np.int64)
+    labels = np.asarray(y_true)
     probabilities = np.asarray(
         y_probability,
         dtype=np.float64,
@@ -38,6 +39,11 @@ def validate_evaluation_inputs(
 
     if labels.shape[0] != probabilities.shape[0]:
         raise ValueError("Labels and probabilities must have the same length.")
+
+    if not np.isin(labels, [0, 1]).all():
+        raise ValueError("Labels must contain only binary values: 0 and 1.")
+
+    labels = labels.astype(np.int64)
 
     if set(np.unique(labels).tolist()) != {0, 1}:
         raise ValueError("Labels must contain both binary classes: 0 and 1.")
@@ -90,7 +96,7 @@ def select_f1_threshold(
     valid_scores = f1_scores[valid_indexes]
     maximum_score = valid_scores.max()
 
-    best_indexes = valid_indexes[np.isclose(valid_scores, maximum_score)]
+    best_indexes = valid_indexes[valid_scores == maximum_score]
 
     selected_index = int(best_indexes[-1])
 
@@ -118,6 +124,7 @@ def evaluate_binary_classifier(
     ).ravel()
 
     return {
+        "accuracy": float(accuracy_score(labels, predictions)),
         "roc_auc": float(roc_auc_score(labels, probabilities)),
         "average_precision": float(
             average_precision_score(

@@ -17,7 +17,6 @@ from purchase_propensity.modeling.build import (
     BaselineModelConfig,
     TreeModelConfig,
     build_baseline_pipeline,
-    build_extra_trees_pipeline,
     build_random_forest_pipeline,
 )
 from purchase_propensity.modeling.metrics import evaluate_binary_classifier
@@ -37,11 +36,10 @@ DEFAULT_REPORT_PATH = Path("reports/metrics/model_comparison.json")
 
 @dataclass(frozen=True, slots=True)
 class ComparisonConfig:
-    """Configuration for candidate model comparison."""
+    """Configuration for logistic regression and random forest comparison."""
 
     training: TrainingConfig
     random_forest: TreeModelConfig
-    extra_trees: TreeModelConfig
 
 
 def require_optional_positive_integer(
@@ -128,19 +126,11 @@ def load_comparison_config(
         candidates_section.get("random_forest"),
         "modeling.candidates.random_forest",
     )
-    extra_trees_section = require_mapping(
-        candidates_section.get("extra_trees"),
-        "modeling.candidates.extra_trees",
-    )
 
     return ComparisonConfig(
         training=training_config,
         random_forest=load_tree_model_config(
             random_forest_section,
-            training_config.random_seed,
-        ),
-        extra_trees=load_tree_model_config(
-            extra_trees_section,
             training_config.random_seed,
         ),
     )
@@ -160,7 +150,6 @@ def build_candidate_pipelines(
     return {
         "logistic_regression": build_baseline_pipeline(baseline_config),
         "random_forest": build_random_forest_pipeline(config.random_forest),
-        "extra_trees": build_extra_trees_pipeline(config.extra_trees),
     }
 
 
