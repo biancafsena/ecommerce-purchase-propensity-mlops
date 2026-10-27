@@ -12,6 +12,7 @@ import pandas as pd
 import yaml
 from sklearn.pipeline import Pipeline
 
+from purchase_propensity.config import get_settings
 from purchase_propensity.features.build import split_features_and_target
 from purchase_propensity.modeling.build import (
     BaselineModelConfig,
@@ -19,6 +20,7 @@ from purchase_propensity.modeling.build import (
     build_baseline_pipeline,
     build_random_forest_pipeline,
 )
+from purchase_propensity.modeling.candidate_tracking import log_candidate_run
 from purchase_propensity.modeling.metrics import evaluate_binary_classifier
 from purchase_propensity.modeling.train import (
     TrainingConfig,
@@ -206,6 +208,7 @@ def compare_candidate_models(
     params_path: Path,
     model_output_path: Path,
     report_output_path: Path,
+    track_mlflow: bool = False,
 ) -> dict[str, object]:
     """Train, compare and persist the best validation model."""
     config = load_comparison_config(params_path)
@@ -239,6 +242,17 @@ def compare_candidate_models(
         )
         metrics["primary_metric_value"] = metrics[config.training.primary_metric]
         metrics_by_model[model_name] = metrics
+
+        if track_mlflow:
+            settings = get_settings()
+
+            log_candidate_run(
+                model_name=model_name,
+                pipeline=pipeline,
+                metrics=metrics,
+                tracking_uri=settings.mlflow_tracking_uri,
+                experiment_name=settings.mlflow_experiment_name,
+            )
 
     selected_model_name = select_best_model(
         metrics_by_model,
@@ -306,6 +320,13 @@ def parse_arguments() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_REPORT_PATH,
     )
+
+    parser.add_argument(
+        "--track-mlflow",
+        action="store_true",
+        help="Log each candidate model and its validation metrics to MLflow.",
+    )
+
     return parser.parse_args()
 
 
@@ -318,6 +339,7 @@ def main() -> None:
         params_path=arguments.params,
         model_output_path=arguments.model_output,
         report_output_path=arguments.report_output,
+        track_mlflow=arguments.track_mlflow,
     )
 
     selection = report["selection"]

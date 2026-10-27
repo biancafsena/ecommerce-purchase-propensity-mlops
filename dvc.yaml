@@ -58,6 +58,9 @@ stages:
     - src/purchase_propensity/modeling/compare.py
     - src/purchase_propensity/modeling/metrics.py
     - src/purchase_propensity/modeling/train.py
+    - src/purchase_propensity/config.py
+    - src/purchase_propensity/modeling/candidate_tracking.py
+
     params:
     - data.target_column
     - evaluation.decision_threshold

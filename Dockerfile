@@ -5,28 +5,31 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     POETRY_NO_INTERACTION=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
-    PATH="/app/.venv/bin:$PATH"
+    PATH="/app/.venv/bin:/opt/poetry/bin:$PATH"
 
 WORKDIR /app
 
-# System dependency used by numerical libraries.
+# Biblioteca de sistema utilizada por dependências numéricas.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Keep Poetry separate from the project environment.
+# Instala o Poetry em um ambiente separado.
 RUN python -m venv /opt/poetry \
     && /opt/poetry/bin/pip install "poetry==2.4.0"
 
-# Install locked application dependencies before copying source code.
+# Instala as dependências do lock file, incluindo o DVC.
 COPY pyproject.toml poetry.lock README.md ./
 
-RUN /opt/poetry/bin/poetry install --only main --no-root
+RUN poetry install --with dev --no-root
 
-# Install the application package.
+# Copia o código e a configuração do pipeline.
 COPY src/ ./src/
-COPY params.yaml ./params.yaml
+COPY params.yaml dvc.yaml dvc.lock ./
 
-RUN /opt/poetry/bin/poetry install --only-root
+RUN poetry install --only-root
+
+# Inicializa um ambiente DVC independente dentro da imagem.
+RUN dvc init --no-scm
 
 CMD ["python", "-m", "purchase_propensity.modeling.train", "--help"]

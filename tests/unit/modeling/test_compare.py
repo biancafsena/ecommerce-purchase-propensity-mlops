@@ -398,12 +398,32 @@ def test_compare_candidate_models_selects_and_saves_best_model(
         save_report_mock,
     )
 
+    tracking_mock = Mock()
+
+    monkeypatch.setattr(
+        compare,
+        "log_candidate_run",
+        tracking_mock,
+    )
+
+    monkeypatch.setattr(
+        compare,
+        "get_settings",
+        Mock(
+            return_value=Mock(
+                mlflow_tracking_uri="http://127.0.0.1:5001",
+                mlflow_experiment_name="test-experiment",
+            )
+        ),
+    )
+
     report = compare.compare_candidate_models(
         train_path=train_path,
         validation_path=validation_path,
         params_path=params_path,
         model_output_path=model_output_path,
         report_output_path=report_output_path,
+        track_mlflow=True,
     )
 
     logistic_pipeline.fit.assert_called_once()
@@ -419,6 +439,15 @@ def test_compare_candidate_models_selects_and_saves_best_model(
     assert report["row_counts"] == {
         "train": 10.0,
         "validation": 6.0,
+    }
+
+    assert tracking_mock.call_count == 2
+
+    tracked_models = {call.kwargs["model_name"] for call in tracking_mock.call_args_list}
+
+    assert tracked_models == {
+        "logistic_regression",
+        "random_forest",
     }
 
     dump_mock.assert_called_once_with(

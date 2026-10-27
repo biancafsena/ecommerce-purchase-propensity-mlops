@@ -346,6 +346,21 @@ Deixe o servidor em execução e abra a interface:
 http://127.0.0.1:5001
 ```
 
+
+### Rastreamento dos candidatos
+
+Com o servidor MLflow em execução, a comparação pode registrar cada candidato, seus parâmetros, suas métricas de validação e o pipeline treinado:
+
+```bash
+poetry run python -m purchase_propensity.modeling.compare \
+  --track-mlflow
+```
+
+Esse comando também gera o modelo selecionado e o relatório nos caminhos padrão da comparação. Cada execução cria novas runs no experimento configurado.
+
+O registro do modelo vencedor no Model Registry é realizado separadamente, conforme a próxima seção.
+
+
 ### Registro do modelo selecionado
 
 Com o pipeline DVC concluído, execute em outro terminal:
@@ -388,7 +403,7 @@ O banco, os artefatos locais e o arquivo `.env` permanecem fora do Git.
 
 ## Execução com Docker
 
-A imagem utiliza Python 3.11.16, Poetry 2.4.0 e as dependências principais registradas no `poetry.lock`.
+A imagem utiliza Python 3.11.16, Poetry 2.4.0 e as dependências registradas no `poetry.lock`, incluindo o DVC.
 
 Os dados são montados somente para leitura. Modelos, relatórios e gráficos são persistidos em diretórios locais por volumes.
 
@@ -466,6 +481,29 @@ docker run --rm \
 O limiar de classificação é escolhido pela maximização do F1 na validação e aplicado ao teste sem novo ajuste.
 
 
+### Pipeline DVC completo no contêiner
+
+Construa a imagem:
+
+```bash
+docker build -t purchase-propensity:dvc .
+```
+
+Execute a aquisição do dataset e as etapas do pipeline:
+
+```bash
+docker run --rm purchase-propensity:dvc \
+  sh -c '
+    python -m purchase_propensity.data.download &&
+    dvc repro --force
+  '
+```
+
+Essa execução usa um contêiner temporário. Para preservar os arquivos gerados, é necessário configurar volumes.
+
+O registro dos candidatos no MLflow é executado separadamente com a opção `--track-mlflow`.
+
+
 ### Resultados observados
 
 | Resultado | macOS ARM64 | Docker Linux ARM64 |
@@ -492,7 +530,7 @@ Duas execuções da comparação dentro do Docker produziram relatórios idênti
 
 Os modelos binários permanecem fora do Git. Os relatórios e gráficos documentam a execução.
 
-Nesta configuração, os módulos Python executam dentro do contêiner. A orquestração com DVC e o registro no MLflow continuam sendo executados separadamente no ambiente local.
+Os módulos Python e o pipeline DVC podem ser executados dentro do contêiner. O rastreamento dos candidatos e o registro do modelo no MLflow foram validados separadamente no ambiente local.
 
 
 ## Execução manual
