@@ -129,12 +129,9 @@ O pipeline contém cinco etapas:
 | `compare_models` | Compara regressão logística e Random Forest pela Average Precision na validação e salva o modelo selecionado. |
 | `evaluate_selected_model` | Seleciona o limiar pela maximização do F1 na validação e avalia o modelo selecionado no teste. |
 
-O pré-processamento de cada candidato é ajustado exclusivamente
-com os dados de treinamento. A seleção do modelo e do limiar
-utiliza a validação. O teste é reservado à avaliação final.
+O pré-processamento de cada candidato é ajustado exclusivamente com os dados de treinamento. A seleção do modelo e do limiar utiliza a validação. O teste é reservado à avaliação final.
 
-O registro no MLflow é executado separadamente, após a conclusão
-do pipeline DVC.
+O registro no MLflow é executado separadamente, após a conclusão do pipeline DVC.
 
 
 ### Visualização das dependências
@@ -155,8 +152,26 @@ poetry run dvc stage list
 poetry run dvc repro
 ```
 
-O DVC utiliza as dependências, os parâmetros e o `dvc.lock`
-para identificar quais etapas precisam ser executadas novamente.
+O DVC utiliza as dependências, os parâmetros e o `dvc.lock` para identificar quais etapas precisam ser executadas novamente.
+
+
+### Reprodução sem remoto DVC
+
+O projeto não possui um armazenamento remoto DVC configurado. Para reproduzir o pipeline após clonar o repositório e instalar as dependências, baixe o dataset público e execute:
+
+```bash
+poetry run python -m purchase_propensity.data.download
+poetry run dvc repro
+```
+
+A aquisição verifica a integridade do arquivo. Esse procedimento foi testado em uma cópia limpa do repositório no macOS.
+
+Para executar novamente a avaliação do modelo selecionado:
+
+```bash
+poetry run dvc repro --force --single-item evaluate_selected_model
+```
+
 
 ### Consulta do estado
 
