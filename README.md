@@ -4,6 +4,7 @@ Pipeline de Machine Learning para estimar a probabilidade de uma sessão de e-co
 
 O projeto aplica práticas de Engenharia de Machine Learning para construir uma solução reproduzível, auditável, testável e preparada para evolução até produção.
 
+
 ## Identificação
 
 - **Instituição:** FIAP
@@ -12,6 +13,7 @@ O projeto aplica práticas de Engenharia de Machine Learning para construir uma 
 - **Grupo:** 24
 - **Autora:** Bianca Firmino Ferreira de Sena
 - **Repositório:** `ecommerce-purchase-propensity-mlops`
+
 
 ## Problema de negócio
 
@@ -29,6 +31,7 @@ O projeto trata o problema como uma classificação binária:
 
 - `Revenue = True`: a sessão terminou em compra;
 - `Revenue = False`: a sessão não terminou em compra.
+
 
 ## Objetivos técnicos
 
@@ -69,6 +72,7 @@ Principais características:
 
 O desbalanceamento da variável-alvo é considerado na configuração do modelo, na escolha das métricas e na definição do threshold de decisão.
 
+
 ### Integridade dos dados
 
 O arquivo original é validado por SHA-256:
@@ -79,23 +83,26 @@ b3055ee355f59134d851d32641183cb4a8b45def7124d2f50442a042f358e0d9
 
 A aquisição automatizada rejeita arquivos alterados ou incompatíveis com o conteúdo oficial esperado.
 
+
 ## Arquitetura do pipeline
 
 ```mermaid
 flowchart TD
-    A["UCI Dataset"] --> B["Aquisição e SHA-256"]
-    B --> C["Dados brutos com DVC"]
-    C --> D["Validação de schema e qualidade"]
-    D --> E["Divisão estratificada"]
-    E --> F["Treino: 70%"]
-    E --> G["Validação: 15%"]
-    E --> H["Teste: 15%"]
-    F --> I["Pré-processamento sem vazamento"]
-    G --> I
-    I --> J["Regressão logística baseline"]
-    J --> K["Seleção do threshold na validação"]
-    K --> L["Avaliação final no teste"]
-    J --> M["MLflow Tracking"]
+    A["Dataset UCI"] --> B["Aquisição e verificação SHA-256"]
+    B --> C["Validação dos dados"]
+    C --> D["Divisão estratificada"]
+    D --> E["Treinamento"]
+    D --> F["Validação"]
+    D --> G["Teste"]
+    E --> H["Regressão logística e Random Forest"]
+    F --> I["Comparação por Average Precision"]
+    H --> I
+    I --> J["Modelo selecionado"]
+    F --> K["Seleção do limiar por F1"]
+    J --> K
+    K --> L["Avaliação final"]
+    G --> L
+    L --> M["Registro no MLflow"]
     M --> N["Model Registry"]
 ```
 
@@ -109,206 +116,374 @@ A separação é determinística, utiliza a semente `42` e preserva a proporçã
 
 O conjunto de teste permanece isolado durante o treinamento e a seleção do threshold. Ele é utilizado somente para a avaliação final do modelo.
 
+
 ## Pipeline DVC
 
-O pipeline contém quatro etapas:
+O pipeline contém cinco etapas:
 
-1. `validate_data`
-   - valida schema, tipos, domínios e integridade;
-   - verifica quantidade de registros e distribuição das classes;
-   - gera um relatório JSON auditável.
+| Etapa | Responsabilidade |
+|---|---|
+| `validate_data` | Valida o schema, os domínios e a qualidade dos dados brutos. |
+| `preprocess` | Divide os dados em treinamento, validação e teste e salva as partições em Parquet. |
+| `train_baseline` | Treina a regressão logística e calcula suas métricas na validação. |
+| `compare_models` | Compara regressão logística e Random Forest pela Average Precision na validação e salva o modelo selecionado. |
+| `evaluate_selected_model` | Seleciona o limiar pela maximização do F1 na validação e avalia o modelo selecionado no teste. |
 
-2. `preprocess`
-   - lê os parâmetros definidos em `params.yaml`;
-   - realiza a divisão estratificada e determinística;
-   - produz arquivos Parquet para treino, validação e teste.
+O pré-processamento de cada candidato é ajustado exclusivamente
+com os dados de treinamento. A seleção do modelo e do limiar
+utiliza a validação. O teste é reservado à avaliação final.
 
-3. `train_baseline`
-   - constrói o pipeline de pré-processamento;
-   - treina a regressão logística com pesos balanceados;
-   - avalia o modelo na validação;
-   - salva o modelo treinado e as métricas de validação.
+O registro no MLflow é executado separadamente, após a conclusão
+do pipeline DVC.
 
-4. `evaluate_baseline`
-   - seleciona o threshold que maximiza o F1 na validação;
-   - aplica o threshold selecionado ao conjunto de teste;
-   - calcula métricas finais;
-   - gera as curvas e a matriz de confusão.
 
-Visualize o pipeline:
+### Visualização das dependências
 
 ```bash
 poetry run dvc dag
 ```
 
-Reproduza todas as etapas:
+### Listagem das etapas
+
+```bash
+poetry run dvc stage list
+```
+
+### Reprodução do pipeline
 
 ```bash
 poetry run dvc repro
 ```
 
-Consulte o estado do pipeline:
+O DVC utiliza as dependências, os parâmetros e o `dvc.lock`
+para identificar quais etapas precisam ser executadas novamente.
+
+### Consulta do estado
 
 ```bash
 poetry run dvc status
 ```
 
-Consulte as métricas:
+### Consulta das métricas
 
 ```bash
 poetry run dvc metrics show
 ```
 
+
 ## Estratégia de modelagem
 
-O baseline utiliza regressão logística por oferecer:
+São comparados dois candidatos: regressão logística e Random Forest.
 
-- interpretação simples;
-- treinamento eficiente;
-- probabilidades de classe;
-- boa referência inicial para comparação;
-- comportamento adequado em um pipeline tabular.
+A regressão logística funciona como referência inicial por sua simplicidade e eficiência. O Random Forest permite representar relações não lineares e interações entre características.
 
-Configuração atual:
 
-| Parâmetro | Valor |
-|---|---|
-| Modelo | Regressão logística |
-| Peso das classes | `balanced` |
-| Solver | `lbfgs` |
-| Máximo de iterações | 1.000 |
-| Semente aleatória | 42 |
-| Métrica principal | Average Precision |
-| Estratégia de threshold | Maximização do F1 na validação |
+### Configurações dos candidatos
 
-As configurações são centralizadas no arquivo `params.yaml`.
+| Parâmetro | Regressão logística | Random Forest |
+|---|---|---|
+| Peso das classes | `None` | `None` |
+| Semente aleatória | 42 | 42 |
+| Solver | `lbfgs` | Não se aplica |
+| Máximo de iterações | 2.000 | Não se aplica |
+| Quantidade de árvores | Não se aplica | 300 |
+| Profundidade máxima | Não se aplica | 12 |
+| Mínimo de amostras por folha | Não se aplica | 5 |
+
+As configurações são centralizadas em `params.yaml`.
+
+
+### Seleção do modelo e do limiar
+
+O modelo é selecionado pela maior Average Precision no conjunto de validação.
+
+Após a seleção, o limiar de classificação é escolhido pela maximização do F1 na validação. Esse limiar é aplicado ao teste sem novo ajuste.
+
+O F1 orienta esta avaliação experimental. A adoção de um limiar operacional dependerá dos custos de falsos positivos e falsos negativos e das restrições do negócio.
+
 
 ## Engenharia de atributos e prevenção de vazamento
 
+A modelagem utiliza 16 características: nove numéricas e sete categóricas.
+
+A variável `PageValues` foi excluída por precaução, pois sua construção e disponibilidade no momento da previsão ainda precisam ser verificadas. Sua associação com a compra, isoladamente, não comprova vazamento de informação.
+
 As transformações são encapsuladas em um `Pipeline` do Scikit-Learn.
 
-O pipeline aplica:
+| Tratamento | Regressão logística | Random Forest |
+|---|---|---|
+| Ausentes numéricos | Imputação pela mediana | Imputação pela mediana |
+| Escalonamento numérico | `StandardScaler` | Sem escalonamento |
+| Ausentes categóricos | Imputação pela categoria mais frequente | Imputação pela categoria mais frequente |
+| Codificação categórica | `OneHotEncoder` | `OneHotEncoder` |
+| Categorias desconhecidas | Ignoradas pelo codificador | Ignoradas pelo codificador |
 
-- tratamento separado para variáveis numéricas e categóricas;
-- padronização das variáveis numéricas;
-- codificação das variáveis categóricas;
-- treinamento das transformações somente com dados de treino;
-- aplicação das transformações aprendidas aos dados de validação, teste e inferência.
+Não foram identificados valores ausentes nos dados analisados. Os imputadores integram o pipeline como tratamento explícito para eventuais ausências.
 
-Essa abordagem impede que estatísticas dos conjuntos de validação ou teste influenciem o treinamento.
+Os códigos de sistema operacional, navegador, região e tipo de tráfego são tratados como categorias.
 
-## Resultados do baseline
+Os imputadores, o escalonador e o codificador são ajustados exclusivamente no treinamento. As transformações aprendidas são aplicadas à validação, ao teste e à inferência.
 
-O threshold foi selecionado exclusivamente no conjunto de validação:
+As características descrevem a navegação da sessão. Seu uso durante uma sessão em andamento exige definir o instante da previsão e verificar quais informações estarão disponíveis.
 
-| Informação | Valor |
+Foram observadas combinações de características compartilhadas entre as partições. Os registros foram preservados, pois perfis iguais não comprovam que representam a mesma sessão. Essa sobreposição permanece documentada como limitação da avaliação.
+
+
+## Resultados da modelagem
+
+A regressão logística e o Random Forest foram treinados com as mesmas partições. A escolha do modelo foi baseada na Average Precision do conjunto de validação.
+
+
+### Comparação na validação
+
+| Modelo | Average Precision |
 |---|---:|
-| Estratégia | Maximização do F1 |
-| Threshold selecionado | 0,6237 |
-| F1 na validação | 0,6353 |
-| F1 no teste | 0,6263 |
+| Regressão logística | 0,3200 |
+| Random Forest | 0,3493 |
 
-### Métricas finais no teste
+O Random Forest apresentou a maior Average Precision na validação e foi selecionado para a avaliação final.
+
+
+### Limiar de classificação
+
+Após a escolha do modelo, o limiar foi selecionado pela maximização do F1 na validação:
+
+| Informação | Resultado |
+|---|---:|
+| Limiar selecionado | 0,1806 |
+| F1 na validação | 0,4097 |
+
+O limiar completo é `0.18057002545820874`. Ele é aplicado às probabilidades de compra para definir a classe prevista:
+
+- probabilidade maior ou igual ao limiar: **com compra**;
+- probabilidade abaixo do limiar: **sem compra**.
+
+
+### Avaliação final no teste
 
 | Métrica | Resultado |
 |---|---:|
-| Average Precision | 0,6181 |
-| ROC AUC | 0,8987 |
-| F1 | 0,6263 |
-| Precisão | 0,6039 |
-| Recall | 0,6503 |
-| Balanced Accuracy | 0,7862 |
-| Brier Score | 0,1233 |
-| Log Loss | 0,4581 |
-| Taxa de predições positivas | 16,65% |
+| Average Precision | 0,3786 |
+| F1 | 0,4254 |
+| Precisão | 0,2989 |
+| Recall | 0,7378 |
+
 
 ### Matriz de confusão no teste
 
-| Resultado | Quantidade |
+| Resultado | Quantidade de sessões |
 |---|---:|
-| Verdadeiros negativos | 1.442 |
-| Falsos positivos | 122 |
-| Falsos negativos | 100 |
-| Verdadeiros positivos | 186 |
+| Verdadeiros negativos | 1.069 |
+| Falsos positivos | 495 |
+| Falsos negativos | 75 |
+| Verdadeiros positivos | 211 |
 
-A proximidade entre as métricas de validação e teste indica comportamento consistente do baseline fora dos dados utilizados na seleção do threshold.
+O recall de aproximadamente 73,78% indica que o modelo identificou 211 das 286 sessões com compra no teste. Ao mesmo tempo, 495 sessões sem compra foram classificadas como compra.
 
-Os resultados completos estão disponíveis em:
+A escolha de um limiar para uso operacional deve considerar o custo dessas classificações e os objetivos do negócio.
 
-```text
-reports/metrics/baseline_validation_metrics.json
-reports/metrics/baseline_test_metrics.json
-```
 
-As visualizações finais estão em:
+### Relatórios e visualizações
 
-```text
-reports/figures/baseline/calibration_curve.png
-reports/figures/baseline/confusion_matrix.png
-reports/figures/baseline/precision_recall_curve.png
-reports/figures/baseline/roc_curve.png
-```
+Os resultados completos da execução local estão disponíveis em:
+
+- `reports/metrics/model_comparison.json`
+- `reports/metrics/selected_model_test_metrics.json`
+- `reports/figures/selected_model/`
+
+Os resultados da execução em Docker estão documentados na seção **Execução com Docker**.
+
 
 ## Rastreamento com MLflow
 
-O projeto utiliza MLflow para:
+O MLflow registra os parâmetros, as métricas, a linhagem dos dados e os artefatos da execução. O modelo selecionado é armazenado no Model Registry, com o limiar de classificação
+documentado nos parâmetros e nas tags da versão.
 
-- registrar parâmetros;
-- registrar métricas;
-- armazenar artefatos;
-- registrar a linhagem dos conjuntos de treino e validação;
-- salvar o modelo no formato seguro `skops`;
-- criar versões no Model Registry;
-- atribuir o alias configurável `champion`.
+O registro é executado separadamente após o pipeline DVC.
+
 
 ### Configuração local
 
-Crie o arquivo de ambiente:
+Crie o arquivo de ambiente, caso ainda não exista:
 
 ```bash
 cp .env.example .env
 ```
 
-Inicie o servidor local do MLflow:
+Configure a URI do MLflow no `.env` para corresponder à porta do servidor utilizado. Na execução documentada, usamos:
+
+```text
+http://127.0.0.1:5001
+```
+
+Na raiz do projeto, inicie o servidor:
 
 ```bash
 poetry run mlflow server \
-  --backend-store-uri sqlite:///mlflow.db \
-  --default-artifact-root ./mlartifacts \
+  --backend-store-uri sqlite:///mlruns/mlflow.db \
   --host 127.0.0.1 \
-  --port 5000
+  --port 5001
 ```
 
-Em outro terminal, confirme a disponibilidade:
+Deixe o servidor em execução e abra a interface:
+
+```text
+http://127.0.0.1:5001
+```
+
+### Registro do modelo selecionado
+
+Com o pipeline DVC concluído, execute em outro terminal:
 
 ```bash
-curl --fail http://127.0.0.1:5000/health
+poetry run python -m purchase_propensity.modeling.track \
+  --model models/selected_model.joblib \
+  --metrics reports/metrics/selected_model_test_metrics.json \
+  --metrics-section test \
+  --params params.yaml \
+  --train data/processed/train.parquet \
+  --validation data/processed/validation.parquet \
+  --test data/processed/test.parquet \
+  --run-name random-forest-selected-model \
+  --model-family random_forest \
+  --pipeline-stage evaluate_selected_model \
+  --comparison-report reports/metrics/model_comparison.json
 ```
 
-Registre o baseline:
+Esse comando documenta a execução em que o Random Forest foi selecionado. Se outro candidato vencer em uma nova execução, ajuste `--model-family` e `--run-name` de acordo com o relatório
+`reports/metrics/model_comparison.json`.
 
-```bash
-poetry run python -m purchase_propensity.modeling.track
-```
 
-Abra a interface:
+### Registro da execução documentada
 
-```bash
-open http://127.0.0.1:5000
-```
-
-Configuração padrão:
-
-| Configuração | Valor |
+| Informação | Valor |
 |---|---|
-| Tracking URI | `http://127.0.0.1:5000` |
 | Experimento | `ecommerce-purchase-propensity` |
-| Modelo registrado | `purchase-propensity-classifier` |
-| Alias de produção | `champion` |
+| Modelo | `purchase-propensity-classifier` |
+| Versão registrada | `2` |
+| Alias atribuído | `champion` |
+| Limiar registrado | `0.18057002545820874` |
 
-O banco local, os artefatos e o arquivo `.env` permanecem fora do Git.
+A versão indicada corresponde à execução local documentada. Novos registros podem criar outras versões e atualizar o alias configurado.
+
+O limiar fica registrado como metadado. Para produzir a classe com esse valor, a aplicação de inferência deve obter a probabilidade e aplicar explicitamente a regra `probabilidade >= limiar`; o método `predict()` do modelo não passa a utilizar o limiar registrado automaticamente.
+
+O banco, os artefatos locais e o arquivo `.env` permanecem fora do Git.
+
+
+## Execução com Docker
+
+A imagem utiliza Python 3.11.16, Poetry 2.4.0 e as dependências principais registradas no `poetry.lock`.
+
+Os dados são montados somente para leitura. Modelos, relatórios e gráficos são persistidos em diretórios locais por volumes.
+
+
+### Construção da imagem
+
+Na raiz do projeto, com o Docker Desktop em execução:
+
+```bash
+docker build -t purchase-propensity:local .
+```
+
+Verifique a inicialização da aplicação:
+
+```bash
+docker run --rm purchase-propensity:local
+```
+
+O comando apresenta a ajuda do módulo de treinamento.
+
+
+### Preparação dos diretórios
+
+Os arquivos de treinamento, validação e teste devem estar disponíveis em `data/processed/`. Para gerá-los no ambiente local:
+
+```bash
+poetry run dvc repro preprocess
+```
+
+Crie os diretórios de saída:
+
+```bash
+mkdir -p models/docker reports/metrics/docker reports/figures/docker
+```
+
+### Comparação dos modelos
+
+```bash
+docker run --rm \
+  --mount "type=bind,source=$(pwd)/data/processed,target=/app/data/processed,readonly" \
+  --mount "type=bind,source=$(pwd)/models/docker,target=/app/models/docker" \
+  --mount "type=bind,source=$(pwd)/reports/metrics/docker,target=/app/reports/metrics/docker" \
+  purchase-propensity:local \
+  python -m purchase_propensity.modeling.compare \
+  --train data/processed/train.parquet \
+  --validation data/processed/validation.parquet \
+  --params params.yaml \
+  --model-output models/docker/selected_model.joblib \
+  --report-output reports/metrics/docker/model_comparison.json
+```
+
+A comparação seleciona o modelo pela maior Average Precision
+no conjunto de validação.
+
+
+### Avaliação do modelo selecionado
+
+```bash
+docker run --rm \
+  --mount "type=bind,source=$(pwd)/data/processed,target=/app/data/processed,readonly" \
+  --mount "type=bind,source=$(pwd)/models/docker,target=/app/models/docker,readonly" \
+  --mount "type=bind,source=$(pwd)/reports/metrics/docker,target=/app/reports/metrics/docker" \
+  --mount "type=bind,source=$(pwd)/reports/figures/docker,target=/app/reports/figures/docker" \
+  purchase-propensity:local \
+  python -m purchase_propensity.modeling.evaluate \
+  --model-name selected_model \
+  --model models/docker/selected_model.joblib \
+  --validation data/processed/validation.parquet \
+  --test data/processed/test.parquet \
+  --params params.yaml \
+  --report reports/metrics/docker/selected_model_test_metrics.json \
+  --figures-directory reports/figures/docker/selected_model
+```
+
+O limiar de classificação é escolhido pela maximização do F1 na validação e aplicado ao teste sem novo ajuste.
+
+
+### Resultados observados
+
+| Resultado | macOS ARM64 | Docker Linux ARM64 |
+|---|---:|---:|
+| Modelo selecionado | Random Forest | Random Forest |
+| Average Precision na validação | 0,3493 | 0,3482 |
+| Limiar escolhido na validação | 0,1806 | 0,1848 |
+| Average Precision no teste | 0,3786 | 0,3793 |
+| F1 no teste | 0,4254 | 0,4229 |
+
+Os valores da tabela estão arredondados. Os relatórios JSON preservam a precisão dos resultados.
+
+Foram verificados os mesmos arquivos de dados, código, parâmetros e versões de Python, NumPy, Pandas, Scikit-Learn, SciPy e Joblib nos dois ambientes.
+
+Duas execuções da comparação dentro do Docker produziram relatórios idênticos. Foram observadas pequenas diferenças entre macOS e Linux; sua causa não foi isolada. Portanto, não se afirma equivalência numérica exata entre plataformas.
+
+
+### Artefatos produzidos
+
+- Modelo: `models/docker/selected_model.joblib`
+- Comparação: `reports/metrics/docker/model_comparison.json`
+- Avaliação: `reports/metrics/docker/selected_model_test_metrics.json`
+- Gráficos: `reports/figures/docker/selected_model/`
+
+Os modelos binários permanecem fora do Git. Os relatórios e gráficos documentam a execução.
+
+Nesta configuração, os módulos Python executam dentro do contêiner. A orquestração com DVC e o registro no MLflow continuam sendo executados separadamente no ambiente local.
+
 
 ## Execução manual
+
+Os comandos abaixo devem ser executados na raiz do projeto, com as dependências instaladas pelo Poetry.
+
 
 ### Aquisição dos dados
 
@@ -316,11 +491,8 @@ O banco local, os artefatos e o arquivo `.env` permanecem fora do Git.
 poetry run python -m purchase_propensity.data.download
 ```
 
-Para substituir e validar novamente um arquivo existente:
+O arquivo bruto é validado por SHA-256.
 
-```bash
-poetry run python -m purchase_propensity.data.download --force
-```
 
 ### Validação dos dados
 
@@ -334,16 +506,6 @@ Relatório produzido:
 reports/metrics/raw_data_validation.json
 ```
 
-As validações incluem:
-
-- nomes e ordem das colunas;
-- tipos de dados;
-- domínios categóricos;
-- intervalos numéricos;
-- ausência de valores nulos;
-- quantidade esperada de registros;
-- presença das duas classes;
-- checksum do dataset.
 
 ### Pré-processamento
 
@@ -351,7 +513,7 @@ As validações incluem:
 poetry run python -m purchase_propensity.data.preprocess
 ```
 
-Arquivos produzidos:
+Partições produzidas:
 
 ```text
 data/processed/train.parquet
@@ -359,7 +521,8 @@ data/processed/validation.parquet
 data/processed/test.parquet
 ```
 
-### Treinamento
+
+### Treinamento da regressão logística
 
 ```bash
 poetry run python -m purchase_propensity.modeling.train
@@ -372,18 +535,39 @@ models/baseline_logistic_regression.joblib
 reports/metrics/baseline_validation_metrics.json
 ```
 
-### Avaliação final
+### Comparação dos candidatos
 
 ```bash
-poetry run python -m purchase_propensity.modeling.evaluate
+poetry run python -m purchase_propensity.modeling.compare
 ```
 
-Artefatos produzidos:
+A comparação treina regressão logística e Random Forest, seleciona o candidato pela Average Precision na validação e produz:
 
 ```text
-reports/metrics/baseline_test_metrics.json
-reports/figures/baseline/
+models/selected_model.joblib
+reports/metrics/model_comparison.json
 ```
+
+
+### Avaliação do modelo selecionado
+
+```bash
+poetry run python -m purchase_propensity.modeling.evaluate \
+  --model-name selected_model \
+  --model models/selected_model.joblib \
+  --report reports/metrics/selected_model_test_metrics.json \
+  --figures-directory reports/figures/selected_model
+```
+
+A avaliação seleciona o limiar na validação e o aplica ao teste. Os resultados são salvos em:
+
+```text
+reports/metrics/selected_model_test_metrics.json
+reports/figures/selected_model/
+```
+
+O registro no MLflow é realizado em uma etapa separada, conforme a seção **Rastreamento com MLflow**.
+
 
 ## Estrutura do projeto
 
@@ -416,12 +600,14 @@ reports/figures/baseline/
 │   ├── fixtures/
 │   ├── integration/
 │   └── unit/
+├── Dockerfile
 ├── dvc.lock
 ├── dvc.yaml
 ├── params.yaml
 ├── poetry.lock
 └── pyproject.toml
 ```
+
 
 ## Requisitos
 
@@ -430,6 +616,7 @@ reports/figures/baseline/
 - Git
 - DVC
 - Docker
+
 
 ## Instalação
 
@@ -459,6 +646,7 @@ Confirme o ambiente:
 poetry run python --version
 poetry check
 ```
+
 
 ## Qualidade de código
 
@@ -492,14 +680,14 @@ Execução completa dos hooks:
 poetry run pre-commit run --all-files
 ```
 
-Estado atual de qualidade:
+Estado da última verificação local:
 
-- 73 testes automatizados aprovados;
-- 88,42% de cobertura total;
-- cobertura mínima obrigatória de 80%;
-- Ruff aprovado;
-- Mypy aprovado;
+- 107 testes automatizados aprovados;
+- 87,28% de cobertura total;
+- cobertura mínima configurada de 80%;
+- Ruff e Mypy aprovados;
 - hooks de pre-commit e pre-push configurados.
+
 
 ## Tecnologias
 
@@ -520,6 +708,7 @@ Estado atual de qualidade:
 - FastAPI
 - Docker
 
+
 ## Princípios adotados
 
 - Reprodutibilidade desde a origem dos dados.
@@ -533,6 +722,7 @@ Estado atual de qualidade:
 - Validação antes do processamento.
 - Artefatos e métricas auditáveis.
 - Testes automatizados como requisito de entrega.
+
 
 ## Status e roadmap
 
@@ -562,19 +752,21 @@ Estado atual de qualidade:
 - [x] MLflow Model Registry
 - [x] Versionamento e alias de modelo
 - [x] Testes unitários das etapas implementadas
+- [x] Comparação entre regressão logística e Random Forest
+- [x] Containerização e execução dos módulos de modelagem com Docker
+
 
 ### Próximas etapas
 
-- [ ] Comparação entre modelos
 - [ ] Calibração de probabilidades
 - [ ] API de inferência com FastAPI
 - [ ] Validação dos contratos de entrada e saída da API
 - [ ] Testes de integração
-- [ ] Containerização com Docker
 - [ ] CI com GitHub Actions
 - [ ] Monitoramento e simulação de drift
 - [ ] Documentação das decisões arquiteturais
 - [ ] Avaliação de infraestrutura em nuvem
+
 
 ## Autora
 
