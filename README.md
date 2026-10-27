@@ -739,48 +739,59 @@ Estado da última verificação local:
 - Testes automatizados como requisito de entrega.
 
 
+
 ## Status e roadmap
 
 ### Implementado
 
 - [x] Estrutura modular do projeto
-- [x] Ambiente Poetry e lock file
-- [x] Configuração de qualidade e testes
+- [x] Ambiente Poetry e arquivo de dependências `poetry.lock`
+- [x] Configuração de qualidade de código e testes
 - [x] Hooks de pre-commit e pre-push
-- [x] Aquisição automatizada do dataset
+- [x] Aquisição automatizada do dataset público
 - [x] Verificação de integridade por SHA-256
 - [x] Versionamento do dataset bruto com DVC
-- [x] Validação de schema com Pandera
-- [x] Relatório auditável de qualidade
-- [x] Pipeline DVC de validação
-- [x] Divisão estratificada e reproduzível
+- [x] Validação de schema e dados com Pandera
+- [x] Relatório de qualidade dos dados
+- [x] Divisão estratificada em treinamento, validação e teste
 - [x] Dados processados em formato Parquet
 - [x] Pipeline de engenharia de atributos
-- [x] Pré-processamento sem vazamento de dados
+- [x] Transformações ajustadas somente com dados de treinamento
 - [x] Baseline com regressão logística
-- [x] Métricas adequadas ao desbalanceamento
-- [x] Seleção de threshold na validação
-- [x] Avaliação final no conjunto de teste
-- [x] Curvas e matriz de confusão
-- [x] Rastreamento de experimentos com MLflow
-- [x] Linhagem dos conjuntos de dados no MLflow
-- [x] MLflow Model Registry
-- [x] Versionamento e alias de modelo
-- [x] Testes unitários das etapas implementadas
 - [x] Comparação entre regressão logística e Random Forest
+- [x] Seleção do modelo pela Average Precision na validação
+- [x] Seleção do limiar de classificação na validação
+- [x] Avaliação do modelo selecionado no conjunto de teste
+- [x] Curvas e matriz de confusão
+- [x] Pipeline DVC para validação, preparação, treinamento e avaliação
+- [x] Rastreamento de experimento com MLflow
+- [x] Registro da linhagem dos conjuntos de dados no MLflow
+- [x] Registro e versionamento do modelo no MLflow Model Registry
+- [x] Registro do limiar de classificação como metadado da versão
+- [x] Atribuição de alias ao modelo registrado
+- [x] Testes unitários das etapas implementadas
 - [x] Containerização e execução dos módulos de modelagem com Docker
+- [x] Teste de reprodução do pipeline em cópia limpa do repositório
 
 
-### Próximas etapas
+### Próximas etapas para a entrega
 
-- [ ] Calibração de probabilidades
-- [ ] API de inferência com FastAPI
-- [ ] Validação dos contratos de entrada e saída da API
-- [ ] Testes de integração
-- [ ] CI com GitHub Actions
-- [ ] Monitoramento e simulação de drift
-- [ ] Documentação das decisões arquiteturais
-- [ ] Avaliação de infraestrutura em nuvem
+- [ ] Revisar os requisitos e os arquivos finais do projeto
+- [ ] Preparar e gravar a apresentação do Tech Challenge
+- [ ] Conferir o acesso ao repositório e realizar a entrega
+
+
+### Evoluções futuras
+
+- [ ] Avaliar a calibração das probabilidades
+- [ ] Desenvolver API de inferência com FastAPI
+- [ ] Validar os contratos de entrada e saída da API
+- [ ] Ampliar os testes de integração
+- [ ] Avaliar a execução de CI com GitHub Actions
+- [ ] Implementar monitoramento e simulação de drift
+- [ ] Documentar as decisões arquiteturais
+- [ ] Avaliar infraestrutura em nuvem
+- [ ] Avaliar armazenamento remoto para os dados e artefatos do DVC
 
 
 ## Autora
