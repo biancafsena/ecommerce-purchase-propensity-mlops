@@ -15,6 +15,19 @@ O projeto aplica práticas de Engenharia de Machine Learning para construir uma 
 - **Repositório:** `ecommerce-purchase-propensity-mlops`
 
 
+
+## Vídeo de apresentação
+
+Apresentação do Tech Challenge da Fase 2 da Pós-Tech em Machine Learning Engineering da FIAP — Grupo 24.
+
+O vídeo apresenta o problema, as decisões de modelagem, o pipeline de MLOps e os resultados obtidos.
+
+▶️ [Assistir à apresentação no YouTube](https://youtu.be/hBriaH7wfWI)
+
+**Duração:** aproximadamente 5 minutos.
+
+
+
 ## Problema de negócio
 
 Uma empresa de e-commerce precisa identificar quais sessões de navegação apresentam maior propensão de compra.
