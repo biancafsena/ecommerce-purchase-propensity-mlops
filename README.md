@@ -802,7 +802,8 @@ Estado da última verificação local:
 - [x] Avaliação do modelo selecionado no conjunto de teste
 - [x] Curvas e matriz de confusão
 - [x] Pipeline DVC para validação, preparação, treinamento e avaliação
-- [x] Rastreamento de experimento com MLflow
+- [x] Rastreamento individual dos candidatos no MLflow
+- [x] Execução das cinco etapas do pipeline DVC dentro do Docker
 - [x] Registro da linhagem dos conjuntos de dados no MLflow
 - [x] Registro e versionamento do modelo no MLflow Model Registry
 - [x] Registro do limiar de classificação como metadado da versão
@@ -810,16 +811,14 @@ Estado da última verificação local:
 - [x] Testes unitários das etapas implementadas
 - [x] Containerização e execução dos módulos de modelagem com Docker
 - [x] Teste de reprodução do pipeline em cópia limpa do repositório
+- [x] Revisar os requisitos e os arquivos finais do projeto
+- [x] Preparar e gravar a apresentação do Tech Challenge
+- [x] Conferir o acesso ao repositório e realizar a entrega
 
 
-### Próximas etapas para a entrega
+### Possíveis evoluções
 
-- [ ] Revisar os requisitos e os arquivos finais do projeto
-- [ ] Preparar e gravar a apresentação do Tech Challenge
-- [ ] Conferir o acesso ao repositório e realizar a entrega
-
-
-### Evoluções futuras
+As melhorias abaixo poderão ampliar a solução após esta entrega:
 
 - [ ] Avaliar a calibração das probabilidades
 - [ ] Desenvolver API de inferência com FastAPI
