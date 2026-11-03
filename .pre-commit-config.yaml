@@ -9,8 +9,16 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-added-large-files
+        name: Check file size — general files
         args:
           - --maxkb=1024
+        exclude: ^notebooks/(01_exploratory_data_analysis|02_modeling)\.ipynb$
+
+      - id: check-added-large-files
+        name: Check file size — executed notebooks
+        args:
+          - --maxkb=5096
+        files: ^notebooks/(01_exploratory_data_analysis|02_modeling)\.ipynb$
       - id: check-toml
       - id: check-yaml
       - id: detect-private-key
